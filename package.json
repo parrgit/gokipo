@@ -1,0 +1,28 @@
+{
+  "name": "gokipo",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "dev": "nuxt",
+    "build": "nuxt build",
+    "start": "nuxt start",
+    "generate": "nuxt generate",
+    "test": "jest"
+  },
+  "dependencies": {
+    "core-js": "^3.6.5",
+    "express": "^4.17.1",
+    "firebase": "^8.2.2",
+    "nuxt": "^2.14.6"
+  },
+  "devDependencies": {
+    "@vue/test-utils": "^1.1.0",
+    "babel-core": "7.0.0-bridge.0",
+    "babel-jest": "^26.5.0",
+    "fibers": "^5.0.0",
+    "jest": "^26.5.0",
+    "sass": "^1.32.0",
+    "sass-loader": "^10.1.0",
+    "vue-jest": "^3.0.4"
+  }
+}
