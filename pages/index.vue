@@ -10,8 +10,13 @@
       </div>
     </div>
     <div class="container">
-      <Player v-for="(value, name) in player" :key="name" :value="value" :name="name" />
-      <Penalty :cards="penaltyCards" />
+      <form @submit.prevent="addCard">
+        <input type="text" placeholder="type" v-model="type" />
+        <input type="text" placeholder="species" v-model="species" />
+        <input type="number" placeholder="number" v-model.number="num" />
+        <button type="submit">ADD</button>
+      </form>
+      <button @click="displayCards">display cards</button>
     </div>
   </div>
 </template>
@@ -24,6 +29,9 @@ export default {
     return {
       name: '',
       funcSample: '',
+      type: '',
+      species: '',
+      num: 0,
     }
   },
   computed: {
@@ -34,9 +42,34 @@ export default {
     ...mapActions('user', ['login', 'setLoginUser', 'deleteLoginUser']),
     async deal() {
       const addMessage = this.$fireFunc.httpsCallable('addMessage')
-      await addMessage('baiyoeeen').then((result) => {
+      await addMessage('baiyoeeen').then(result => {
         this.funcSample = result.data.text
       })
+    },
+    addCard() {
+      this.$firestore
+        .collection('/room/jQgG7tfijgG4JZ3mLmlQ/field/euI0wuMll7mliznQimQB/reference')
+        .add({
+          type: this.type,
+          species: this.species,
+          num: this.num,
+        })
+        .then(this.num++)
+    },
+    displayCards() {
+      this.$firestore
+        .collection('/room/jQgG7tfijgG4JZ3mLmlQ/field/euI0wuMll7mliznQimQB/reference')
+        .orderBy("species")
+        // .orderBy("num")
+        .get()
+        .then(snapshot => {
+          snapshot.forEach(doc => {
+            console.log(doc.id, ' => ', doc.data().species, doc.data().num)
+          })
+        })
+        .catch(error => {
+          console.log('error getting documents: ', error)
+        })
     },
   },
   async created() {

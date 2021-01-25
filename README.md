@@ -1,5 +1,8 @@
+> # このブランチはfirestoreにデータ追加する用です
 # install dependencies
-$ npm install
+$ npm install @root&functions
+
+# set firebaseConfig.json(apiKey..)
 
 # serve with hot reload at localhost:3000
 $ npm run dev
