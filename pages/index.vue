@@ -59,12 +59,12 @@ export default {
     displayCards() {
       this.$firestore
         .collection('/room/jQgG7tfijgG4JZ3mLmlQ/field/euI0wuMll7mliznQimQB/reference')
-        .orderBy("species")
-        // .orderBy("num")
+        .orderBy('species')
+        .orderBy('num')
         .get()
         .then(snapshot => {
           snapshot.forEach(doc => {
-            console.log(doc.id, ' => ', doc.data().species, doc.data().num)
+            console.log(doc.id, ' => ', doc.data().species, doc.data().num, doc.data().type)
           })
         })
         .catch(error => {
