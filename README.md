@@ -1,4 +1,5 @@
-> # このブランチはfirestoreにデータ追加する用です
+このブランチはfirestoreにデータ追加
+シャッフル機能作成用
 # install dependencies
 $ npm install @root&functions
 

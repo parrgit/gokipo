@@ -3,7 +3,7 @@
     <div class="header">
       <h1>room</h1>
       <p>sample: {{ funcSample }}</p>
-      <button @click="deal">カード配布</button>
+      <button @click="test">テスト用</button>
       <div>
         <p>{{ uname }}</p>
         <p style="line-height:40px;" @click="login" v-if="!uname">login</p>
@@ -34,17 +34,17 @@ export default {
       num: 0,
     }
   },
-  computed: {
-    ...mapState(['player', 'penaltyCards']),
-    ...mapGetters('user', ['uname']),
-  },
   methods: {
     ...mapActions('user', ['login', 'setLoginUser', 'deleteLoginUser']),
-    async deal() {
-      const addMessage = this.$fireFunc.httpsCallable('addMessage')
-      await addMessage('baiyoeeen').then(result => {
-        this.funcSample = result.data.text
-      })
+    // async test() {
+    //   const addMessage = this.$fireFunc.httpsCallable('addMessage')
+    //   await addMessage('baiyoeeen').then(result => {
+    //     this.funcSample = result.data.text
+    //   })
+    // },
+    async test() {
+      const getFirestore = this.$fireFunc.httpsCallable('getFirestore')
+      await getFirestore()
     },
     addCard() {
       this.$firestore
