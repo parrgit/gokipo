@@ -1,4 +1,3 @@
-シャッフル機能作成用
 # install dependencies
 $ npm install @root&functions
 
