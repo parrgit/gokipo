@@ -13,11 +13,11 @@
         <input type="text" placeholder="type" v-model="type" />
         <input type="text" placeholder="species" v-model="species" />
         <input type="number" placeholder="number" v-model.number="num" />
-        <button type="submit" disabled>ADD</button>
+        <button type="submit" disabled>ADD disabled</button>
       </form>
-      <button @click="stack">山札を配列にして返却</button>
-      <button @click="deleteCards">speciesまたはtype==""のカードを削除</button>
-      <button @click="displayCards">display cards</button>
+      <button @click="stack">referenceを配列にして返却</button>
+      <button @click="deleteCards">speciesまたはtype==''のカードを削除</button>
+      <button @click="displayCards">referenceを取得して表示</button>
     </div>
   </div>
 </template>
