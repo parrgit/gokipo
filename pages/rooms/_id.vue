@@ -3,7 +3,11 @@
     <div class="container">
       <p>{{ roomName }}</p>
       <p>phase: {{ phase }}</p>
-      <div class="game-table"></div>
+      <div class="game-table">
+        <div v-for="player in inPlayers" :key="player.id">
+          <pre>{{ player }}</pre>
+        </div>
+      </div>
       <pre>{{ ME }}</pre>
       <button @click="join">join</button>
       <button @click="test">test</button>
@@ -20,14 +24,17 @@ export default {
     }
   },
   computed: {
+    ...mapGetters('user', ['uname']),
     ...mapGetters('basics', ['roomName', 'phase', 'players']),
     ME: function() {
       const me = this.players.find(player => {
         const spread = { ...player } //一回スプレッドしてからオブジェクトに入れ込まないとplayerがObserverになり、undefinedになる
         return spread.id === this.uid
       })
-      console.log({ ...me }.name)
       return { ...me }.name
+    },
+    inPlayers: function() {
+      return { ...this.players }
     },
   },
   async created() {
@@ -63,5 +70,6 @@ export default {
   height: 500px;
   border: 1px solid #fffffe;
   margin: auto;
+  display: flex;
 }
 </style>
