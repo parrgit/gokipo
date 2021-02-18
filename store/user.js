@@ -4,6 +4,7 @@ export const state = () => ({
 
 export const getters = {
   uname: state => (state.login_user ? state.login_user.name : null),
+  uid: state => (state.login_user ? state.login_user.uid : null),
 }
 
 export const mutations = {
@@ -17,7 +18,7 @@ export const mutations = {
 }
 
 export const actions = {
-  //common functions
+  //common functions//
   //ユーザー情報取得
   //registerで登録したnameをfirestoreから取得
   setLoginUser({ commit }, user) {
@@ -33,14 +34,18 @@ export const actions = {
   deleteLoginUser({ commit }) {
     commit('deleteLoginUser')
   },
-  //Authentication
+  //Authentication//
   //ログイン
   login() {
     const provider = new this.$firebase.auth.GoogleAuthProvider()
-    this.$fireAuth.signInWithPopup(provider)
+    this.$fireAuth.signInWithPopup(provider).then(() => {
+      this.$router.push('/'), location.reload()
+    })
   },
   //ログアウト
   logout() {
-    this.$fireAuth.signOut()
+    this.$fireAuth.signOut().then(() => {
+      this.$router.push('/'), location.reload()
+    })
   },
 }

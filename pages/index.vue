@@ -1,46 +1,73 @@
 <template>
   <div>
-    <div class="header">
-      <h1>room</h1>
-      <p>sample: {{ funcSample }}</p>
-      <div>
-        <p>{{ uname }}</p>
-        <p style="line-height:40px;" @click="login" v-if="!uname">login</p>
+    <div>
+      <h1>rooms</h1>
+      <div v-for="room in rooms" :key="room.id" @click="moveToRoomPage(room.id)">
+        <p>{{ room.name }}</p>
       </div>
+      <div><button @click="openModal">+</button></div>
     </div>
+    <ModalBase v-if="isActiveModal" @closeModal="closeModal">
+      <CreateRoomModal @closeModal="closeModal" />
+    </ModalBase>
+    <hr>
+    <h2>for debug</h2>
     <div class="container">
       <form @submit.prevent="addCard">
         <input type="text" placeholder="type" v-model="type" />
         <input type="text" placeholder="species" v-model="species" />
-        <input type="number" placeholder="number" v-model.number="num" />
-        <button type="submit" disabled>ADD disabled</button>
+        <button type="submit">ADD card</button>
       </form>
       <button @click="stack">referenceを配列にして返却</button>
       <button @click="deleteCards">speciesまたはtype==''のカードを削除</button>
       <button @click="displayCards">referenceを取得して表示</button>
+      <button @click="ObjArg({ type: 'common', species: 'crh' })">引数にobjectいける？</button>
+      <pre>{{ $data }}</pre>
     </div>
   </div>
 </template>
 
 <script>
-import { mapState, mapActions, mapGetters } from 'vuex'
-
+import { mapState, mapGetters, mapActions } from 'vuex'
 export default {
+  // middleware: ["checkAuth"],
   data() {
     return {
+      isActiveModal: false,
+      unsubscribe: null, //リスナーのデタッチ用
+      //↓デバック用
       name: '',
       funcSample: null,
       type: '',
       species: '',
-      num: 0,
     }
   },
   computed: {
-    ...mapGetters('user', ['uname']),
+    ...mapGetters('rooms', ['rooms']),
+    ...mapGetters('user', ['user']),
+  },
+  async asyncData({ store }) {
+    const unsubscribe = await store.dispatch('rooms/subscribe')
+    return {
+      unsubscribe,
+    }
+  },
+  destoroyed() {
+    this.$store.dispatch('rooms/clear') //ルーム除去
+    if (this.unsubscribe) this.unsubscribe() //リスナーのデタッチ
   },
   methods: {
     ...mapActions('user', ['login', 'setLoginUser', 'deleteLoginUser']),
-
+    moveToRoomPage(roomId) {
+      this.$router.push(`/rooms/${roomId}`)
+    },
+    openModal() {
+      this.isActiveModal = true
+    },
+    closeModal() {
+      this.isActiveModal = false
+    },
+    //↓デバッグ用
     // クライアントからfunctions上の関数を呼び出す(スタートガイド)
     // async addMessage() {
     //   const addMessage = this.$fireFunc.httpsCallable('addMessage')
@@ -54,6 +81,11 @@ export default {
     //   const getFirestore = this.$fireFunc.httpsCallable('getFirestore')
     //   await getFirestore()
     // },
+    // 引数にオブジェクトいけるんやっけ→いけた
+    ObjArg(obj) {
+      console.log(obj.type)
+      console.log(obj.species)
+    },
 
     // サーバーでfirestoreからget→stack[]に入れ込む→クライアントに返却
     async stack() {
@@ -65,14 +97,10 @@ export default {
 
     // firestoreにカードを入れ込む用
     addCard() {
-      this.$firestore
-        .collection('/room/jQgG7tfijgG4JZ3mLmlQ/field/euI0wuMll7mliznQimQB/reference')
-        .add({
-          type: this.type,
-          species: this.species,
-          num: this.num,
-        })
-        .then(this.num++)
+      this.$firestore.collection('/reference').add({
+        type: this.type,
+        species: this.species,
+      })
     },
 
     // 不要なカード削除用
@@ -91,32 +119,18 @@ export default {
     // consoleでrefferenceをみる用
     displayCards() {
       this.$firestore
-        .collection('/room/jQgG7tfijgG4JZ3mLmlQ/field/euI0wuMll7mliznQimQB/reference')
+        .collection('/reference')
         .orderBy('species')
-        .orderBy('num')
         .get()
         .then(snapshot => {
           snapshot.forEach(doc => {
-            console.log(doc.id, ' => ', doc.data().species, doc.data().num, doc.data().type)
+            console.log(doc.id, ' => ', doc.data().species, doc.data().type)
           })
         })
         .catch(error => {
           console.log('error getting documents: ', error)
         })
     },
-  },
-
-  async created() {
-    const user = await this.$auth()
-    if (!user) {
-      //未ログイン
-      this.deleteLoginUser()
-    } else {
-      //ログイン状態
-      //registerで登録した名前を取得
-      const { uid, displayName } = user
-      this.setLoginUser({ uid, displayName })
-    }
   },
 }
 </script>
