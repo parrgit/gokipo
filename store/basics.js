@@ -21,8 +21,8 @@ export const mutations = {
   addPlayer(state, player) {
     state.players.push(player)
   },
-  addPlayer(state, player) {
-    state.players.push(player)
+  resetPlayers(state) {
+    state.players = []
   },
 }
 
@@ -40,15 +40,16 @@ export const actions = {
     this.$firestore.doc(`rooms/${roomId}/progress/progDoc`).onSnapshot(doc => {
       commit('addProgress', doc.data())
     })
-    //playersをフェッチ
-    this.$firestore.collection(`rooms/${roomId}/players`).onSnapshot(snapshot =>
-      snapshot.forEach(doc => {
+    //playersの初期化、フェッチ
+    this.$firestore.collection(`rooms/${roomId}/players`).onSnapshot(snapshot => {
+      commit('resetPlayers')
+      snapshot.forEach(doc => { 
         const player = {
           id: doc.id,
           ...doc.data(),
         }
         commit('addPlayer', player)
       })
-    )
+    })
   },
 }

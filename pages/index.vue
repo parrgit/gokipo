@@ -10,7 +10,7 @@
     <ModalBase v-if="isActiveModal" @closeModal="closeModal">
       <CreateRoomModal @closeModal="closeModal" />
     </ModalBase>
-    <hr>
+    <hr />
     <h2>for debug</h2>
     <div class="container">
       <form @submit.prevent="addCard">
@@ -18,10 +18,10 @@
         <input type="text" placeholder="species" v-model="species" />
         <button type="submit">ADD card</button>
       </form>
-      <button @click="stack">referenceを配列にして返却</button>
       <button @click="deleteCards">speciesまたはtype==''のカードを削除</button>
       <button @click="displayCards">referenceを取得して表示</button>
       <button @click="ObjArg({ type: 'common', species: 'crh' })">引数にobjectいける？</button>
+      <button @click="displayUser">user情報確認</button>
       <pre>{{ $data }}</pre>
     </div>
   </div>
@@ -44,7 +44,7 @@ export default {
   },
   computed: {
     ...mapGetters('rooms', ['rooms']),
-    ...mapGetters('user', ['user']),
+    // ...mapGetters('user', ['user']),
   },
   async asyncData({ store }) {
     const unsubscribe = await store.dispatch('rooms/subscribe')
@@ -58,6 +58,10 @@ export default {
   },
   methods: {
     ...mapActions('user', ['login', 'setLoginUser', 'deleteLoginUser']),
+    async displayUser() {
+      const user = await this.$auth()
+      console.log(user)
+    },
     moveToRoomPage(roomId) {
       this.$router.push(`/rooms/${roomId}`)
     },
@@ -87,20 +91,14 @@ export default {
       console.log(obj.species)
     },
 
-    // サーバーでfirestoreからget→stack[]に入れ込む→クライアントに返却
-    async stack() {
-      const initStack = this.$fireFunc.httpsCallable('initStack')
-      await initStack().then(result => {
-        console.log(result.data)
-      })
-    },
-
     // firestoreにカードを入れ込む用
     addCard() {
       this.$firestore.collection('/reference').add({
         type: this.type,
         species: this.species,
       })
+      this.type = ''
+      this.species = ''
     },
 
     // 不要なカード削除用
