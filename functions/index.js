@@ -74,7 +74,7 @@ exports.gameStart = functions.https.onCall(async roomId => {
 
 async function gameStart_cardDistribution(sum) {
   let stack = []
-  const cards = []
+  const penalty = []
   let speciesTotalStack = {
     bat: 0,
     crh: 0,
@@ -94,21 +94,19 @@ async function gameStart_cardDistribution(sum) {
     stk: 0,
   }
   let reference = fireStore.collection('/reference')
-  await reference
-    .get()
-    .then(coll => {
-      coll.forEach(doc => {
-        stack.push({ id: doc.id, type: doc.data().type, species: doc.data().species })
-      })
+  await reference.get().then(coll => {
+    coll.forEach(doc => {
+      stack.push({ id: doc.id, type: doc.data().type, species: doc.data().species })
     })
+  })
   stack = _.shuffle(stack)
   //7+(全数%プレイヤー数)
-  for (i = 6 + ((stack.length - 7) % sum); i >= 0; i--) {
+  for (let i = 6 + ((stack.length - 7) % sum); i >= 0; i--) {
     while (stack[i].type === 'yes' || stack[i].type === 'no') {
       console.log('YES! NO!')
       stack = _.shuffle(stack)
     }
-    cards.push(...stack.splice(i, 1))
+    penalty.push(...stack.splice(i, 1))
   }
 
   // console.log(`------------stack------------`)
@@ -147,8 +145,8 @@ async function gameStart_cardDistribution(sum) {
   //   console.log(`${i}:${cards[i].id} ${cards[i].type}_${cards[i].species}`)
   // }
   console.log(`------------penalty------------`)
-  for (i = 0; i < cards.length; i++) {
-    switch (stack[i].species) {
+  for (i = 0; i < penalty.length; i++) {
+    switch (penalty[i].species) {
       case 'bat':
         speciesTotalPena.bat++
         break
