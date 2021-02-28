@@ -24,6 +24,7 @@
     <div class="container">
       <button @click="stack">referenceを配列にして返却</button>
       <button @click="displayCards">referenceを取得して表示</button>
+      <button @click="waiting">phaseをwaitingに</button>
       <pre>{{ $data }}</pre>
     </div>
   </div>
@@ -90,18 +91,9 @@ export default {
     },
     // コンソールでreferenceをみる用
     async displayCards() {
-      let speciesTotal = {
-        bat: 0,
-        crh: 0,
-        fly: 0,
-        frg: 0,
-        rat: 0,
-        spn: 0,
-        stk: 0,
-      }
       let stack = []
-      await this.$firestore
-        .collection('/reference')
+      const reference = this.$firestore.collection('/reference')
+      await reference
         // .orderBy('species')
         .get()
         .then(coll => {
@@ -109,37 +101,15 @@ export default {
             // console.log(doc.id, ' => ', doc.data().species, doc.data().type)
             stack.push({ id: doc.id, type: doc.data().type, species: doc.data().species })
           })
+          console.table(stack)
         })
         .catch(error => {
           console.log('error getting documents: ', error)
         })
-      console.log(`------------stack------------`)
-      for (let i = 0; i < stack.length; i++) {
-        switch (stack[i].species) {
-          case 'bat':
-            speciesTotal.bat++
-            break
-          case 'crh':
-            speciesTotal.crh++
-            break
-          case 'fly':
-            speciesTotal.fly++
-            break
-          case 'frg':
-            speciesTotal.frg++
-            break
-          case 'rat':
-            speciesTotal.rat++
-            break
-          case 'spn':
-            speciesTotal.spn++
-            break
-          case 'stk':
-            speciesTotal.stk++
-            break
-        }
-      }
-      console.log(speciesTotal)
+    },
+    waiting() {
+      const progress = this.$firestore.doc(`/rooms/${this.roomId}/progress/progDoc`)
+      progress.update({ phase: 'waiting' })
     },
   },
 }
