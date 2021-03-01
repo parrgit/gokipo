@@ -4,7 +4,13 @@
       <p>{{ roomName }}</p>
       <p>phase: {{ phase }}</p>
       <div class="game-table">
-        <div v-for="player in inPlayers" :key="player.id" class="player">
+        <button
+          v-for="player in inPlayers"
+          :key="player.id"
+          @click="selectAcceptor(player.id)"
+          class="player"
+          :disabled="player.id === uid"
+        >
           <p>id: {{ player.id }}</p>
           <p>name: {{ player.name }}</p>
           <p>isReady: {{ player.isReady }}</p>
@@ -13,19 +19,46 @@
           <p>canbeNominated: {{ player.canbeNominated }}</p>
           <p>isLoser: {{ player.isLoser }}</p>
           <p>handNum: {{ player.handNum }}</p>
-        </div>
+        </button>
       </div>
       <pre>{{ me }}</pre>
-      <button @click="join">Join</button>
-      <button @click="ready">Ready</button>
+      <!-- realの選択 -->
+      <select v-model="realId">
+        <option value="" disabled selected>select a burden</option>
+        <option v-for="card in hand" :key="card.id" :value="card.id">
+          <p>{{ card.type }} {{ card.species }}</p>
+        </option>
+      </select>
+      <!-- declareの選択 -->
+      <select v-model="declare">
+        <option value="" disabled selected>select a declare</option>
+        <option
+          v-for="declareElement in declareElements"
+          :key="declareElement"
+          :value="declareElement"
+        >
+          <p>{{ declareElement }}</p>
+        </option>
+      </select>
+
+      <div class="buttons">
+        <button @click="join">Join</button>
+        <button @click="ready">Ready</button>
+        <button @click="give">Give</button>
+      </div>
+      <div style="display: flex;" class="info">
+        <pre>{{ real }}</pre>
+        <p>{{ declare }}</p>
+        <p>{{ acceptorId }}</p>
+      </div>
     </div>
     <hr />
     <h2>for debug</h2>
-    <div class="container">
+    <div class="debugs">
       <button @click="stack">referenceを配列にして返却</button>
       <button @click="displayCards">referenceを取得して表示</button>
       <button @click="waiting">phaseをwaitingに</button>
-      <pre>{{ $data }}</pre>
+      <button @click="console">削除用(2021/3/2)</button>
     </div>
   </div>
 </template>
@@ -35,25 +68,48 @@ import { mapActions, mapGetters } from 'vuex'
 export default {
   data() {
     return {
-      roomId: this.$route.params.id,
+      realId: '',
+      declare: '',
+      acceptorId: '',
+      declareElements: ['king', 'bat', 'crh', 'fly', 'frg', 'rat', 'spn', 'stk'],
     }
   },
   computed: {
     ...mapGetters('user', ['uname', 'uid']),
-    ...mapGetters('basics', ['roomName', 'phase', 'players']),
-    me: function() {
-      const me = this.players.find(player => {
-        const spreadPlayer = { ...player } //一回スプレッドしてからオブジェクトに入れ込まないとplayerがObserverになり、undefinedになる
-        return spreadPlayer.id === this.uid
-      })
-      return { ...me }.name
+    ...mapGetters('basics', ['roomName', 'phase', 'players', 'hand']),
+    roomId() {
+      return this.$route.params.id
     },
-    inPlayers: function() {
-      return { ...this.players }
+    inHand() {
+      return [...this.hand]
+    },
+    inPlayers() {
+      // 一回スプレッドしてからオブジェクトに入れ込まないとplayerがObserverになり、undefinedになる
+      return [...this.players]
+    },
+    submission() {
+      return {
+        declare: this.declare,
+        real: this.real,
+        acceptorId: this.acceptorId,
+        roomId: this.roomId,
+      }
+    },
+    me() {
+      const me = this.inPlayers.find(player => {
+        return player.id === this.uid
+      })
+      return { ...me }.name //スプレッドしないと表示できない例
+    },
+    real() {
+      return this.inHand.find(card => {
+        return card.id === this.realId
+      })
     },
   },
   async created() {
-    await this.fetchBasics(this.roomId)
+    const user = await this.$auth()
+    this.fetchBasics({ roomId: this.roomId, uid: user.uid })
   },
   methods: {
     ...mapActions('basics', ['fetchBasics']),
@@ -70,12 +126,12 @@ export default {
       }
       this.$firestore.doc(`rooms/${this.roomId}/players/${this.uid}`).set(playerData)
     },
-    // 自分のisReadyフラグをinvert
+    // 自分のisReadyフラグをinvert -> functioins発火
     async ready() {
-      const docRef = this.$firestore.doc(`/rooms/${this.roomId}/players/${this.uid}`)
+      const playerDoc = this.$firestore.doc(`/rooms/${this.roomId}/players/${this.uid}`)
       // isReadyをinvertしてからgameStart関数を呼ぶ
-      await docRef.get().then(doc => {
-        docRef.update({
+      await playerDoc.get().then(doc => {
+        playerDoc.update({
           isReady: !doc.data().isReady,
         })
       })
@@ -107,9 +163,28 @@ export default {
           console.log('error getting documents: ', error)
         })
     },
+    // phaseをwaitingに戻す
     waiting() {
       const progress = this.$firestore.doc(`/rooms/${this.roomId}/progress/progDoc`)
       progress.update({ phase: 'waiting' })
+    },
+    // プレイヤー選択
+    selectAcceptor(playerId) {
+      this.acceptorId = playerId
+    },
+    give() {
+      const give = this.$fireFunc.httpsCallable('give')
+      give(this.submission)
+    },
+    console() {
+      const handCol = this.$firestore.collection(
+        `/rooms/${this.roomId}/invPlayers/${this.uid}/hand`
+      )
+      handCol.get().then(col => {
+        col.forEach(doc => {
+          doc.ref.delete()
+        })
+      })
     },
   },
 }
@@ -126,9 +201,20 @@ export default {
 }
 .game-table {
   width: 800px;
-  height: 500px;
+  height: 320px;
   border: 1px solid #fffffe;
   margin: auto;
   display: flex;
+  font-size: 14px;
+  line-height: 3px;
+}
+.buttons {
+  display: flex;
+}
+.debugs {
+  display: flex;
+}
+.info > p {
+  padding: 0 10px;
 }
 </style>

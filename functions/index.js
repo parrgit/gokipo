@@ -21,7 +21,6 @@ var _ = require('lodash')
 //     console.log(change.after.data()) //変更されたドキュメントの内容を表示
 //   })
 
-//TODO gamestart関数(onCallable)
 exports.gameStart = functions.https.onCall(async roomId => {
   console.log('----------GAME START!----------')
   const room = fireStore.doc(`rooms/${roomId}`)
@@ -77,12 +76,13 @@ async function gameStart_cardDistribution(sum, roomId) {
   stack = _.shuffle(stack)
   // [penalty] 作成 stackから 7+(全数%プレイヤー数)枚入れ込む
   for (let i = 6 + ((stack.length - 7) % sum); i >= 0; i--) {
+    //TODO7をPENALTY（定数）などにする
     while (stack[i].type === 'yes' || stack[i].type === 'no') {
       stack = _.shuffle(stack)
     }
     penalties.push(...stack.splice(i, 1))
   }
-  // Save 枚数が合うまで回す
+  // [penalty] Save 枚数が合うまで回す
   // 経緯 batch処理✗ -> for文✗ -> firestore直接確認して枚数あってなければもう一度やる方式にする
   while (penaltySum < 6) {
     penaltySum = 0
@@ -94,7 +94,7 @@ async function gameStart_cardDistribution(sum, roomId) {
       })
     })
   }
-  // [hand] 残りのstackからstack/sum枚ずつ入れ込む
+  // [hand] 作成 残りのstackからstack/sum枚ずつ入れ込む
   handLength = stack.length / sum
   for (let i = 0; i < sum; i++) {
     const hand = []
@@ -116,15 +116,18 @@ async function gameStart_cardDistribution(sum, roomId) {
       let handSum = 0 //確認用、ローカル変数である必要あり
       while (handSum < handLength) {
         handSum = 0
-        await handsSave(roomId, doc.id, hands[i]) //Save
+        await handsSave(roomId, doc.id, hands[i]) // [hand] Save
         // 確認
-        const handRef = fireStore.collection(`/rooms/${roomId}/invPlayers/${doc.id}/hand`)
-        await handRef.get().then(col => {
+        const handCol = fireStore.collection(`/rooms/${roomId}/invPlayers/${doc.id}/hand`)
+        await handCol.get().then(col => {
           col.forEach(() => {
             handSum++
           })
         })
       }
+      // 各プレーヤーにhandNumをセットする
+      const playerRef = fireStore.doc(`/rooms/${roomId}/players/${doc.id}`)
+      await playerRef.update({ handNum: handSum })
     })
   })
 }
@@ -155,9 +158,9 @@ async function penaltySave(roomId, penalties, penaltyBodyCol, penaltyTopDoc) {
 
 async function handsSave(roomId, uid, hand) {
   var batch = fireStore.batch()
-  const handRef = fireStore.collection(`/rooms/${roomId}/invPlayers/${uid}/hand`)
+  const handCol = fireStore.collection(`/rooms/${roomId}/invPlayers/${uid}/hand`)
   //まずhandコレクションを初期化
-  await handRef.get().then(col => {
+  await handCol.get().then(col => {
     col.forEach(doc => {
       doc.ref.delete()
     })
@@ -190,6 +193,33 @@ function phaseSet(roomId, phase) {
   })
 }
 
+// exports.give = functions.https.onCall((declare, real, acceptorId, uid) => {
+exports.give = functions.https.onCall(async (submission, context) => {
+  console.log('==============give================')
+  let cardSum = 0
+  const declare = submission.declare
+  const real = submission.real
+  const acceptorId = submission.acceptorId
+  const roomId = submission.roomId
+  const uid = context.auth.uid
+  // const roomDoc = fireStore.doc(`rooms/${roomId}`)
+  const progressDoc = fireStore.doc(`rooms/${roomId}/progress/progDoc`)
+  const playersCol = fireStore.collection(`rooms/${roomId}/players`)
+  const handCol = fireStore.collection(`/rooms/${roomId}/invPlayers/${uid}/hand`)
+  await progressDoc.get().then(doc => {
+    if (doc.data().phase !== 'give') return
+  })
+  await handCol.get().then(col => {
+    col.docs.forEach(() => {
+      cardSum++
+    })
+  })
+  if (cardSum < 1) stop()
+})
+
+function stop() {
+  console.log('STOP!')
+}
 //カード内容表示
 // let speciesTotalStack = {
 //   bat: 0,

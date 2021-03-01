@@ -3,12 +3,14 @@ export const state = () => ({
   progress: {},
   penalty: [], //TODOカード配布 実装時に考える
   players: [], //TODOburdenまだ
+  hand: [], //TODO入れ込む
 })
 
 export const getters = {
   roomName: state => state.roomInfo.name,
   phase: state => state.progress.phase,
   players: state => state.players,
+  hand: state => state.hand,
 }
 
 export const mutations = {
@@ -21,13 +23,19 @@ export const mutations = {
   addPlayer(state, player) {
     state.players.push(player)
   },
+  addCard(state, card) {
+    state.hand.push(card)
+  },
   resetPlayers(state) {
     state.players = []
+  },
+  resetHand(state) {
+    state.hand = []
   },
 }
 
 export const actions = {
-  fetchBasics({ commit }, roomId) {
+  fetchBasics({ commit }, { roomId, uid }) {
     //roomInfoをフェッチ
     this.$firestore.doc(`rooms/${roomId}`).onSnapshot(doc => {
       const roomInfo = {
@@ -43,7 +51,7 @@ export const actions = {
     //playersの初期化、フェッチ
     this.$firestore.collection(`rooms/${roomId}/players`).onSnapshot(snapshot => {
       commit('resetPlayers')
-      snapshot.forEach(doc => { 
+      snapshot.forEach(doc => {
         const player = {
           id: doc.id,
           ...doc.data(),
@@ -51,5 +59,20 @@ export const actions = {
         commit('addPlayer', player)
       })
     })
+    //【自分の】handの初期化、フェッチ
+    this.$firestore
+      .collection(`rooms/${roomId}/invPlayers/${uid}/hand`)
+      .orderBy('species')
+      .onSnapshot(col => {
+        commit('resetHand')
+        col.forEach(doc => {
+          const card = {
+            id: doc.id,
+            type: doc.data().type,
+            species: doc.data().species,
+          }
+          commit('addCard', card)
+        })
+      })
   },
 }
