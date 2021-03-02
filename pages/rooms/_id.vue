@@ -72,6 +72,11 @@ export default {
       declare: '',
       acceptorId: '',
       declareElements: ['king', 'bat', 'crh', 'fly', 'frg', 'rat', 'spn', 'stk'],
+      // reol: { //TODO消す
+      //   id: 'TGQrubqxJYhjKAif5Ngo',
+      //   type: 'common',
+      //   species: 'bat',
+      // },
     }
   },
   computed: {
@@ -91,6 +96,7 @@ export default {
       return {
         declare: this.declare,
         real: this.real,
+        // real: this.reol, //TODO消す
         acceptorId: this.acceptorId,
         roomId: this.roomId,
       }

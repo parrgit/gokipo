@@ -193,33 +193,71 @@ function phaseSet(roomId, phase) {
   })
 }
 
-// exports.give = functions.https.onCall((declare, real, acceptorId, uid) => {
 exports.give = functions.https.onCall(async (submission, context) => {
   console.log('==============give================')
-  let cardSum = 0
-  const declare = submission.declare
-  const real = submission.real
-  const acceptorId = submission.acceptorId
+  let giversCardSum = 0
+  let canContinue = true
   const roomId = submission.roomId
-  const uid = context.auth.uid
-  // const roomDoc = fireStore.doc(`rooms/${roomId}`)
+  const real = submission.real
+  const declare = submission.declare
+  let acceptor = {
+    id: submission.acceptorId,
+  }
+  let giver = {
+    id: context.auth.uid,
+  }
+  // firestoreRefs
+  const roomDoc = fireStore.doc(`rooms/${roomId}`)
   const progressDoc = fireStore.doc(`rooms/${roomId}/progress/progDoc`)
   const playersCol = fireStore.collection(`rooms/${roomId}/players`)
-  const handCol = fireStore.collection(`/rooms/${roomId}/invPlayers/${uid}/hand`)
+  const giverHandCol = fireStore.collection(`/rooms/${roomId}/invPlayers/${giver.id}/hand`)
+  const giverDoc = fireStore.doc(`rooms/${roomId}/players/${giver.id}`)
+  const acceptorDoc = fireStore.doc(`rooms/${roomId}/players/${acceptor.id}`)
+  const realInGiverHandDoc = fireStore.doc(
+    `/rooms/${roomId}/invPlayers/${giver.id}/hand/${real.id}`
+  )
+
+  //バリデーション phaseがgiveか、関数発火者のisGiverがtrueか
   await progressDoc.get().then(doc => {
-    if (doc.data().phase !== 'give') return
+    const flag = doc.data().phase === 'give'
+    canContinue = canContinue && flag
   })
-  await handCol.get().then(col => {
+  await giverDoc.get().then(doc => {
+    const flag = doc.data().isGiver === true
+    canContinue = canContinue && flag
+  })
+  if (!canContinue) return
+  //手札存在するか
+  await giverHandCol.get().then(col => {
     col.docs.forEach(() => {
-      cardSum++
+      giversCardSum++
     })
   })
-  if (cardSum < 1) stop()
+  if (giversCardSum < 1) {
+    stop()
+    return
+  }
+  await realInGiverHandDoc.get().then(doc => {
+    canContinue = canContinue && doc.data()
+  })
+  if (!canContinue) {
+    //TODOalertを出す「エラー！カードがありません」
+    return
+  }
+  await acceptorDoc.get().then(doc => {
+    canContinue = canContinue && doc.data().canbeNominated
+  })
+  if (!canContinue) {
+    //TODOalertを出す「すでに出し手になっているため、指名できません」
+    return
+  }
 })
 
 function stop() {
   console.log('STOP!')
+  return
 }
+
 //カード内容表示
 // let speciesTotalStack = {
 //   bat: 0,
