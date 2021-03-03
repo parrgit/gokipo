@@ -52,13 +52,16 @@
         <p>{{ acceptorId }}</p>
       </div>
     </div>
+    <pre>{{ progress }}</pre>
+    <!-- ---------------------------------------------------------------- -->
     <hr />
     <h2>for debug</h2>
     <div class="debugs">
       <button @click="stack">referenceを配列にして返却</button>
       <button @click="displayCards">referenceを取得して表示</button>
       <button @click="waiting">phaseをwaitingに</button>
-      <button @click="console">削除用(2021/3/2)</button>
+      <button @click="console">カード全部削除用(2021/3/2)</button>
+      <button @click="initialize">ルーム初期化用(2021/3/4)</button>
     </div>
   </div>
 </template>
@@ -81,7 +84,7 @@ export default {
   },
   computed: {
     ...mapGetters('user', ['uname', 'uid']),
-    ...mapGetters('basics', ['roomName', 'phase', 'players', 'hand']),
+    ...mapGetters('basics', ['roomName', 'phase', 'players', 'hand', 'progress']),
     roomId() {
       return this.$route.params.id
     },
@@ -191,6 +194,24 @@ export default {
           doc.ref.delete()
         })
       })
+    },
+    initialize() {
+      const roomData = {
+        minNumber: 2,
+        maxNumber: 6,
+        currentNumber: 0,
+        createdAt: this.$firebase.firestore.FieldValue.serverTimestamp(),
+      }
+      const progressData = {
+        phase: 'waiting',
+        declare: null,
+        answer: null,
+        turn: 0,
+      }
+      const roomDoc = this.$firestore.doc(`/rooms/${this.roomId}`)
+      const progressDoc = this.$firestore.doc(`rooms/${this.roomId}/progress/progDoc`)
+      roomDoc.update(roomData)
+      progressDoc.update(progressData)
     },
   },
 }

@@ -74,15 +74,14 @@ export default {
       const progressData = {
         phase: 'waiting',
         declare: null,
-        authenticity: null,
         answer: null,
         turn: 0,
       }
-      const realData = {
-        id: '',
-        type: '',
-        species: '',
-      }
+      // const realData = {
+      //   id: '',
+      //   type: '',
+      //   species: '',
+      // }
       try {
         await this.$firestore
           .collection('rooms')

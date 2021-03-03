@@ -11,6 +11,7 @@ export const getters = {
   phase: state => state.progress.phase,
   players: state => state.players,
   hand: state => state.hand,
+  progress: state => state.progress,
 }
 
 export const mutations = {

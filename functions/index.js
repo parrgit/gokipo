@@ -27,9 +27,14 @@ exports.gameStart = functions.https.onCall(async roomId => {
   const progress = fireStore.doc(`rooms/${roomId}/progress/progDoc`)
   const players = fireStore.collection(`rooms/${roomId}/players`)
   let allReady = true
+  let canContinue = true
   await progress.get().then(doc => {
-    if (doc.data().phase !== 'waiting') return
+    const flag = doc.data().phase === 'waiting'
+    canContinue = canContinue && flag
   })
+  if (!canContinue) {
+    console.log('THE GAME HAS ALREADY START')
+  }
   let sum = 0 //プレイヤー数
   await players.get().then(coll => {
     coll.forEach(() => {
@@ -197,27 +202,29 @@ exports.give = functions.https.onCall(async (submission, context) => {
   console.log('==============give================')
   let giversCardSum = 0
   let canContinue = true
-  const roomId = submission.roomId
-  const real = submission.real
-  const declare = submission.declare
   let acceptor = {
     id: submission.acceptorId,
   }
   let giver = {
     id: context.auth.uid,
   }
+  const roomId = submission.roomId
+  const real = submission.real //{id: type: species:}
+  const declare = submission.declare
+  const commons = ['bat', 'crh', 'fly', 'frg', 'rat', 'spn', 'stk']
   // firestoreRefs
-  const roomDoc = fireStore.doc(`rooms/${roomId}`)
   const progressDoc = fireStore.doc(`rooms/${roomId}/progress/progDoc`)
-  const playersCol = fireStore.collection(`rooms/${roomId}/players`)
   const giverHandCol = fireStore.collection(`/rooms/${roomId}/invPlayers/${giver.id}/hand`)
   const giverDoc = fireStore.doc(`rooms/${roomId}/players/${giver.id}`)
   const acceptorDoc = fireStore.doc(`rooms/${roomId}/players/${acceptor.id}`)
   const realInGiverHandDoc = fireStore.doc(
     `/rooms/${roomId}/invPlayers/${giver.id}/hand/${real.id}`
   )
+  const authenticityDoc = fireStore.doc(`rooms/${roomId}/authenticity/authenDoc`)
+  const realDoc = fireStore.doc(`rooms/${roomId}/real/realDoc`)
 
-  //バリデーション phaseがgiveか、関数発火者のisGiverがtrueか
+  //---バリデーション---//
+  //phaseがgiveか、関数発火者のisGiverがtrueか
   await progressDoc.get().then(doc => {
     const flag = doc.data().phase === 'give'
     canContinue = canContinue && flag
@@ -237,21 +244,65 @@ exports.give = functions.https.onCall(async (submission, context) => {
     stop()
     return
   }
+  //選択したカードが存在するか
   await realInGiverHandDoc.get().then(doc => {
     canContinue = canContinue && doc.data()
   })
   if (!canContinue) {
     //TODOalertを出す「エラー！カードがありません」
+    console.log('DONT HAVE THE CARD')
     return
   }
+  //選択されたplayerは受け手になれるか
   await acceptorDoc.get().then(doc => {
     canContinue = canContinue && doc.data().canbeNominated
   })
   if (!canContinue) {
     //TODOalertを出す「すでに出し手になっているため、指名できません」
+    console.log('CANT BE ACCEPTOR')
     return
   }
+  //チート宣言していないか
+  canContinue = canContinue && (declare === 'king' || commons.includes(declare))
+  if (!canContinue) {
+    //TODOalertを出す「エラー！もう一度提出してください」
+    console.log('CHEET!')
+    return
+  }
+  setAuthenticity(declare, real, authenticityDoc)
+  await realDoc.set({
+    id: real.id,
+    type: real.type,
+    species: real.species,
+  })
+  await realInGiverHandDoc.delete()
+  await acceptorDoc.update({
+    isAcceptor: true,
+    canbeNominated: false,
+  })
+  await progressDoc.update({
+    declare: declare,
+    phase: 'accept',
+  })
 })
+
+function setAuthenticity(declare, real, authenticityDoc) {
+  let authenticity = null
+  if (real.type === 'yes') {
+    if (declare === 'king') {
+      authenticity = false
+    } else {
+      authenticity = true
+    }
+  } else if (real.type === 'no') {
+    authenticity = false
+  } else if (declare === 'king') {
+    authenticity = real.type === 'king'
+  } else {
+    authenticity = real.species === declare
+  }
+  authenticityDoc.set({ authenticity: authenticity })
+}
 
 function stop() {
   console.log('STOP!')
