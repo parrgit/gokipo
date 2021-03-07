@@ -74,7 +74,7 @@ export default {
       const progressData = {
         phase: 'waiting',
         declare: null,
-        answer: null,
+        answer: null, //TODO多分いらない
         turn: 0,
       }
       // const realData = {

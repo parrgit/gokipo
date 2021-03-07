@@ -17,6 +17,6 @@ export default ({ app }, inject) => {
   inject('fireFunc', firebase.functions())
 }
 
+// TODO最終的に治す
 const functions = firebase.functions()
-//TODO最終的に治す
 functions.useFunctionsEmulator('http://localhost:5000')
