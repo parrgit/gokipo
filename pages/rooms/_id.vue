@@ -53,13 +53,6 @@
             <p>{{ card.type }} {{ card.species }}</p>
           </option>
         </select>
-        <!-- <v-select
-          :options="hand"
-          v-model="burdenIds"
-          label="type"
-          multiple
-          :reduce="options => options.id"
-        /> -->
       </div>
 
       <!-- <pre>{{ $data }}</pre> -->
@@ -74,7 +67,7 @@
         <button @click="answer(true)">True!</button>
         <button @click="answer(false)">Lie!</button>
         <button @click="pass">Pass</button>
-        <button @click="accumlate">Accumlate</button>
+        <button @click="accumulate">Accumulate</button>
       </div>
       <div style="display: flex;" class="info">
         <!-- <p>{{ declare }}</p>
@@ -141,14 +134,6 @@ export default {
     inPlayers() {
       return [...this.players]
     },
-    submission() {
-      return {
-        declare: this.declare,
-        real: this.real,
-        acceptorId: this.acceptorId,
-        roomId: this.roomId,
-      }
-    },
     me() {
       const me = this.inPlayers.find(player => {
         return player.id === this.uid
@@ -169,6 +154,22 @@ export default {
         burdens.push(obj)
       })
       return burdens
+    },
+    submission() {
+      return {
+        declare: this.declare,
+        real: this.real,
+        acceptorId: this.acceptorId,
+        roomId: this.roomId,
+      }
+    },
+    accumulation() {
+      return {
+        roomId: this.roomId,
+        burdens: this.burdens,
+        declare: this.progress.declare,
+        phase: this.progress.phase,
+      }
     },
   },
   async created() {
@@ -292,11 +293,11 @@ export default {
       pass(this.roomId)
     },
 
-    accumlate() {
+    accumulate() {
       const accumulate = this.$fireFunc.httpsCallable('accumulate')
-      let includeYesNo = false //提出カードにyes/noが含まれていないか
       const burdens = [...this.burdens] //とりあえずスプレッド、必要ない可能性あり
       const declare = this.progress.declare
+      let includeYesNo = false //提出カードにyes/noが含まれていないか
       if (this.progress.phase !== 'yesno') {
         // alert('yesnoフェーズではありません')
         // return //TODOつける
@@ -317,7 +318,7 @@ export default {
       if (burdens.length < 2) {
         if (declare === 'king') {
           if (burdens[0].type === 'king') {
-            accumulate({ roomId: this.roomId, burden: burdens })
+            accumulate(this.accumulation)
             return
           } else {
             alert('1枚のキングを溜めるか、キング以外で2枚溜めてください')
@@ -325,7 +326,7 @@ export default {
           }
         } else {
           if (burdens[0].species === declare) {
-            accumulate({ roomId: this.roomId, burden: burdens })
+            accumulate(this.accumulation)
             return
           } else {
             alert('宣言された物と同じ厄介者を溜めてください')
@@ -336,14 +337,14 @@ export default {
         //2枚提出
         if (declare === 'king') {
           if (burdens[0].type !== declare && burdens[1].type !== declare) {
-            accumulate({ roomId: this.roomId, burden: burdens })
+            accumulate(this.accumulation)
             return
           } else {
             alert('2枚溜める場合は、宣言と違う厄介者を溜めてください')
           }
         } else {
-          if (burden[0].species !== declare && burden[1].species !== declare) {
-            accumulate({ roomId: this.roomId, burden: burdens })
+          if (burdens[0].species !== declare && burdens[1].species !== declare) {
+            accumulate(this.accumulation)
             return
           } else {
             alert('2枚溜める場合は、宣言と違う厄介者を溜めてください')
