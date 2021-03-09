@@ -1,3 +1,5 @@
+require('array-foreach-async');
+
 export const state = () => ({
   roomInfo: {},
   progress: {},
@@ -65,6 +67,8 @@ export const actions = {
           `rooms/${roomId}/players/${doc.id}/burden`
         )
         await playersBurdenCol.get().then(burCol => {
+          // await playersBurdenCol.onSnapshot(burCol => {
+          // commit('resetPlayers')
           burCol.forEach(burDoc => {
             const burdenCard = {
               id: burDoc.id,

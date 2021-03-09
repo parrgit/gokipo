@@ -516,9 +516,8 @@ async function answerSubFunc(
         })
       })
     })
-    //以下awaitでなくてもOK
     //負け手のcanbeNominatedをfalseに
-    loserDoc.update({ canbeNominated: false })
+    await loserDoc.update({ canbeNominated: false }) //TODOfalseにできていない
     //phaseをgiveにする
     progressDoc.get().then(doc => {
       doc.ref.update({
@@ -688,10 +687,21 @@ async function accumulateSub(roomId, burdens, declare, uid) {
   let sum = 0
   let canContinue = true
   let isAcceptor = false
+  const hand = []
+  const real = {}
   //firestore
+  const playersCol = fireStore.collection(`rooms/${roomId}/players`)
   const accumulatorDoc = fireStore.doc(`/rooms/${roomId}/players/${uid}`)
   const accumulatorHandCol = fireStore.collection(`/rooms/${roomId}/invPlayers/${uid}/hand`)
   const accumulatorBurdenCol = fireStore.collection(`/rooms/${roomId}/players/${uid}/burden`)
+  const realDoc = fireStore.doc(`rooms/${roomId}/real/realDoc`)
+  const progressDoc = fireStore.doc(`rooms/${roomId}/progress/progDoc`)
+  await realDoc.get().then(doc => {
+    real.id = doc.id
+    real.type = doc.data().type
+    real.species = doc.data().species
+  })
+  let accumulatorHandDoc = fireStore.doc(`rooms/${roomId}/invPlayers/${uid}/hand/${real.id}`)
   //------------------------- 準備↑ ----------------------------//
 
   //手札測定
@@ -706,60 +716,107 @@ async function accumulateSub(roomId, burdens, declare, uid) {
     return
   }
   //バリデーション 選択したburdensが手札に存在するか
-  if (declare !== 'king') {
-    const hand = []
-    //手札配列hand[]作製
-    await accumulatorHandCol.get().then(col => {
-      col.docs.forEach(async doc => {
-        const card = {
-          id: doc.id,
-          species: doc.data().species,
-        }
-        hand.push(card)
-      })
+  //手札配列hand[]作製
+  await accumulatorHandCol.get().then(col => {
+    col.docs.forEach(async doc => {
+      const card = {
+        id: doc.id,
+        type: doc.data().type,
+        species: doc.data().species,
+      }
+      hand.push(card)
     })
-    burdens.some(burden => {
-      //handにburdens(1or2枚)があるか
-      //ループを抜けやすくするためにarray.someを使用(for文の方がいいとの情報もあり)
-      let index = 0
+  })
+  //handにburdens(1or2枚)があるか
+  //ループを抜けやすくするためにarray.someを使用(for文の方がいいとの情報もあり)
+  burdens.some(burden => {
+    let index = 0
+    if (declare === 'king') {
+      index = hand.findIndex(card => {
+        return card.type === burden.type
+      })
+    } else {
       index = hand.findIndex(card => {
         return card.species === burden.species
       })
-      if (index === -1) {
-        stop()
-        canContinue = false
-        return true //burdens.someを抜ける
-      }
-      hand.splice(index, 1) //burdensが2枚でhandに1枚しかdeclareがない場合に必要
-    })
-    if (!canContinue) return
-    //1枚ずつburden保存（最大2枚）
-    await burdens.forEachAsync(async burden => {
-      let accumulatorBurdenDoc = fireStore.doc(
-        `/rooms/${roomId}/players/${uid}/burden/${burden.id}`
-      )
-      //player(uid)/burdenにセット
+    }
+    if (index === -1) {
+      stop()
+      canContinue = false
+      return true //burdens.someを抜ける
+    }
+    hand.splice(index, 1) //burdensが2枚でhandに1枚しかdeclareがない場合に必要
+  })
+  //common
+  if (!canContinue) return
+  //1枚ずつburden保存（最大2枚）
+  await burdens.forEachAsync(async burden => {
+    let accumulatorBurdenDoc = fireStore.doc(`/rooms/${roomId}/players/${uid}/burden/${burden.id}`)
+    //player(uid)/burdenにセット
+    await accumulatorBurdenDoc.set({ type: burden.type, species: burden.species })
+    //kingである限りpenaltyTopからburdenに保存し続ける
+    //TODOwhile内でエラーあり（原因特定できておらず
+    while (burden.type === 'king') {
+      //KINGをセット
+      console.log(burden) //TODO消す
+      burden = await penaltyProcess(burden, roomId)
+      accumulatorBurdenDoc = fireStore.doc(`rooms/${roomId}/players/${uid}/burden/${burden.id}`)
       await accumulatorBurdenDoc.set({ type: burden.type, species: burden.species })
-      //kingである限りpenaltyTopからburdenに保存し続ける
-      //TODOwhile内でエラーあり（原因特定できておらず
-      while (burden.type === 'king') {
-        //KINGをセット
-        console.log(burden)
-        burden = await penaltyProcess(burden, roomId)
-        accumulatorBurdenDoc = fireStore.doc(`rooms/${roomId}/players/${uid}/burden/${burden.id}`)
-        await accumulatorBurdenDoc.set({ type: burden.type, species: burden.species })
-      }
-    })
-    judge(accumulatorBurdenCol)
-    await accumulatorDoc.get().then(doc => {
-      isAcceptor = doc.data().isAcceptor
-    })
-
-    //TODOいまココ
-  } else {
-    //common
+    }
+  })
+  judge(accumulatorBurdenCol)
+  await accumulatorDoc.get().then(doc => {
+    isAcceptor = doc.data().isAcceptor
+  })
+  if (isAcceptor) {
+    //受け手を出し手に、出し手のisGiverをfalseにする
+    await playersCol
+      .where('isGiver', '==', true) //出し手をクエリ
+      .get()
+      .then(col => {
+        col.forEach(async doc => {
+          await doc.ref.update({ isGiver: false })
+        })
+      })
+    await accumulatorDoc.update({ isGiver: true, isAcceptor: false })
   }
+  //yes/noカードをaccumulatorのhandに入れ込む
+  await accumulatorHandDoc.set({ type: real.type, species: real.species })
+  //提出burdensをhandから削除
+  //TODOaccumulate関数の最初のほうでやってもいいかも(他の関数と合わせる)
+  burdens.forEachAsync(async burden => {
+    accumulatorHandDoc = fireStore.doc(`rooms/${roomId}/invPlayers/${uid}/hand/${burden.id}`)
+    await accumulatorHandDoc.get().then(doc => {
+      doc.ref.delete()
+    })
+  })
+  playersCol.get().then(col => {
+    col.forEach(doc => {
+      doc.ref.update({ canbeNominated: true, isAcceptor: false })
+    })
+  })
+  if (isAcceptor) {
+    await playersCol
+      .where('isGiver', '==', true) //出し手をクエリ
+      .get()
+      .then(col => {
+        col.forEach(async doc => {
+          await doc.ref.update({ canbeNominated: false })
+        })
+      })
+  } else {
+    accumulatorDoc.get().then(doc => {
+      doc.ref.update({ canbeNominated: false })
+    })
+  }
+  progressDoc.get().then(doc => {
+    doc.ref.update({
+      phase: 'give',
+      turn: doc.data().turn + 1,
+    })
+  })
 }
+//TODObatch処理のところをforEachAsyncで書く
 
 //カード内容表示
 // let speciesTotalStack = {
