@@ -1,5 +1,3 @@
-require('array-foreach-async');
-
 export const state = () => ({
   roomInfo: {},
   progress: {},
@@ -34,11 +32,22 @@ export const mutations = {
   addPenaltyTop(state, penaltyTop) {
     state.penaltyTop = penaltyTop
   },
+  addBurden(state, data) {
+    const index = state.players.findIndex(player => {
+      return player.id === data.playerId
+    })
+    state.players[index].burden.push(data.card)
+  },
   resetPlayers(state) {
     state.players = []
   },
   resetHand(state) {
     state.hand = []
+  },
+  resetPlayersBurden(state) {
+    state.players.forEach(player => {
+      player.burden = []
+    })
   },
 }
 
@@ -61,27 +70,10 @@ export const actions = {
     // playersの初期化、フェッチ（stateにプッシュするVer)
     await playersCol.onSnapshot(async snapshot => {
       commit('resetPlayers')
-      await snapshot.forEach(async doc => {
-        const burden = []
-        const playersBurdenCol = this.$firestore.collection(
-          `rooms/${roomId}/players/${doc.id}/burden`
-        )
-        await playersBurdenCol.get().then(burCol => {
-          // await playersBurdenCol.onSnapshot(burCol => {
-          // commit('resetPlayers')
-          burCol.forEach(burDoc => {
-            const burdenCard = {
-              id: burDoc.id,
-              type: burDoc.data().type,
-              species: burDoc.data().species,
-            }
-            burden.push(burdenCard)
-          })
-        })
+      snapshot.forEach(async doc => {
         //player[]に保存
         const player = {
           id: doc.id,
-          burden: burden,
           ...doc.data(),
         }
         commit('addPlayer', player)

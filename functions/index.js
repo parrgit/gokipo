@@ -372,8 +372,8 @@ exports.pass = functions.https.onCall(async (roomId, context) => {
   progressDoc.update({ phase: 'give' })
 })
 
-//=====ANSWER=====//
 exports.answer = functions.https.onCall(async (dataSet, context) => {
+  console.log('===================== ANSWER ======================')
   //------------------------- 準備↓ ----------------------------//
   const roomId = dataSet.roomId //ルームID
   const ans = dataSet.ans //受け手の答え（本当/嘘）
@@ -382,12 +382,13 @@ exports.answer = functions.https.onCall(async (dataSet, context) => {
   let declare = '' //宣言
   let real = {} //実物
   let authenticity = null //真偽
+  let canContinue = true
   //firestore
   const authenticityDoc = fireStore.doc(`rooms/${roomId}/authenticity/authenDoc`)
   const realDoc = fireStore.doc(`rooms/${roomId}/real/realDoc`)
   const progressDoc = fireStore.doc(`rooms/${roomId}/progress/progDoc`)
   const playersCol = fireStore.collection(`rooms/${roomId}/players`)
-
+  const acceptorDoc = fireStore.doc(`rooms/${roomId}/players/${acceptorId}`)
   await realDoc.get().then(doc => {
     real.id = doc.data().id
     real.type = doc.data().type
@@ -403,16 +404,24 @@ exports.answer = functions.https.onCall(async (dataSet, context) => {
     .where('isGiver', '==', true) //出し手をクエリ
     .get()
     .then(snapshot => {
-      //TODO snapshot[0].id みたいな感じに書けない？→かけない class snapshot classの知識が必要
+      //賢い書き方
       giverId = snapshot.docs[0].id
-      // snapshot.forEach(doc => {
-      //   giverId = doc.id
-      // })
     })
   //------------------------- 準備↑ ----------------------------//
-
-  //TODOphase===accept?
-  //TODO受け手.isAcceptor===true?
+  //phase===accept?
+  await progressDoc.get().then(doc => {
+    const flag = doc.data().phase === 'accept'
+    canContinue = canContinue && flag
+  })
+  //acceptor.isAcceptor===true?
+  await acceptorDoc.get().then(doc => {
+    const flag = doc.data().isAcceptor === true
+    canContinue = canContinue && flag
+  })
+  if (!canContinue) {
+    console.log('phaseがacceptでないまたは発火者のisAcceptorがtrueではない')
+    return
+  }
   //出し手/受け手 どちらが勝ちか
   if (ans === authenticity) {
     //出し手負け
@@ -433,12 +442,12 @@ async function answerSubFunc(
   loser,
   giverId
 ) {
-  console.log('===========ANSWER SUB FUNC==============')
+  console.log('=========== ANSWER SUB FUNC ==============')
   //------------------------- 準備↓ ----------------------------//
   let sum = 0
   let oneHandType = ''
   let oneHandSpecies = ''
-  let loserBurdenDoc = fireStore.doc(`rooms/${roomId}/players/${loserId}/burden/${real.id}`)
+  // let loserBurdenDoc = fireStore.doc(`rooms/${roomId}/players/${loserId}/burden/${real.id}`)
   const loserDoc = fireStore.doc(`rooms/${roomId}/players/${loserId}`)
   const loserHandCol = fireStore.collection(`rooms/${roomId}/invPlayers/${loserId}/hand`)
   const loserBurdenCol = fireStore.collection(`rooms/${roomId}/players/${loserId}/burden`)
@@ -492,13 +501,12 @@ async function answerSubFunc(
       setYesNo(loserDoc, progressDoc)
     }
   } else {
-    //YES NO以外
-    await loserBurdenDoc.set({ type: real.type, species: real.species })
+    //realがYES NO以外
+    await loserDoc.update({ burden: admin.firestore.FieldValue.arrayUnion(real) })
     while (real.type === 'king') {
       //KINGをセット
       real = await penaltyProcess(real, roomId)
-      loserBurdenDoc = fireStore.doc(`rooms/${roomId}/players/${loserId}/burden/${real.id}`)
-      await loserBurdenDoc.set({ type: real.type, species: real.species })
+      await loserDoc.update({ burden: admin.firestore.FieldValue.arrayUnion(real) })
     }
     //負け手のburdenを解析し、負け条件を満たしていないか判定
     await judge(loserBurdenCol)
@@ -527,7 +535,7 @@ async function answerSubFunc(
     })
   }
 }
-
+//←real←penaltyTop←penaltyBody[0]←penaltyBody[1]←..
 async function penaltyProcess(burden, roomId) {
   console.log('===========PENALTY PROCESS==========')
   const penaltyTopDoc = fireStore.doc(`/rooms/${roomId}/penaltyTop/penaDoc`)
@@ -601,7 +609,7 @@ async function judge(loserBurdenCol) {
   Object.values(singleTotals).forEach(arg => {
     if (arg > 3) {
       stop()
-      return //TODO元関数を終わらせるためのなにかを返す
+      return //TODO元関数を終わらせるように書く
     } else if (arg > 0) {
       speciesTotal++
     }
@@ -628,7 +636,7 @@ exports.accumulate = functions.https.onCall((submission, context) => {
 
   if (phase !== 'yesno') {
     console.log('yesnoフェーズではありません')
-    // return //TODOつける
+    return
   }
   if (burdens.length < 1 || burdens.length > 2) {
     console.log('1,2枚溜められます')
@@ -751,17 +759,14 @@ async function accumulateSub(roomId, burdens, declare, uid) {
   if (!canContinue) return
   //1枚ずつburden保存（最大2枚）
   await burdens.forEachAsync(async burden => {
-    let accumulatorBurdenDoc = fireStore.doc(`/rooms/${roomId}/players/${uid}/burden/${burden.id}`)
     //player(uid)/burdenにセット
-    await accumulatorBurdenDoc.set({ type: burden.type, species: burden.species })
+    await accumulatorDoc.update({ burden: admin.firestore.FieldValue.arrayUnion(burden) }) //TODO
     //kingである限りpenaltyTopからburdenに保存し続ける
     //TODOwhile内でエラーあり（原因特定できておらず
     while (burden.type === 'king') {
       //KINGをセット
-      console.log(burden) //TODO消す
       burden = await penaltyProcess(burden, roomId)
-      accumulatorBurdenDoc = fireStore.doc(`rooms/${roomId}/players/${uid}/burden/${burden.id}`)
-      await accumulatorBurdenDoc.set({ type: burden.type, species: burden.species })
+      await accumulatorDoc.update({ burden: admin.firestore.FieldValue.arrayUnion(real) }) //TODO
     }
   })
   judge(accumulatorBurdenCol)
@@ -784,31 +789,23 @@ async function accumulateSub(roomId, burdens, declare, uid) {
   await accumulatorHandDoc.set({ type: real.type, species: real.species })
   //提出burdensをhandから削除
   //TODOaccumulate関数の最初のほうでやってもいいかも(他の関数と合わせる)
+  //手札から溜めるカードを削除
   burdens.forEachAsync(async burden => {
     accumulatorHandDoc = fireStore.doc(`rooms/${roomId}/invPlayers/${uid}/hand/${burden.id}`)
     await accumulatorHandDoc.get().then(doc => {
       doc.ref.delete()
     })
   })
+  //全プレイヤー情報を更新
   playersCol.get().then(col => {
     col.forEach(doc => {
       doc.ref.update({ canbeNominated: true, isAcceptor: false })
     })
   })
-  if (isAcceptor) {
-    await playersCol
-      .where('isGiver', '==', true) //出し手をクエリ
-      .get()
-      .then(col => {
-        col.forEach(async doc => {
-          await doc.ref.update({ canbeNominated: false })
-        })
-      })
-  } else {
-    accumulatorDoc.get().then(doc => {
-      doc.ref.update({ canbeNominated: false })
-    })
-  }
+  //accumulatorのisYesNoerをfalseに、次turnのgiverになるためcanbeNominatedをfalseに
+  accumulatorDoc.get().then(doc => {
+    doc.ref.update({ isYesNoer: false, canbeNominated: false })
+  })
   progressDoc.get().then(doc => {
     doc.ref.update({
       phase: 'give',

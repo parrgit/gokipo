@@ -5,7 +5,7 @@
       <p>phase: {{ phase }}</p>
       <div class="game-table">
         <button
-          v-for="player in inPlayers"
+          v-for="player in players"
           :key="player.id"
           @click="selectAcceptor(player.id)"
           :class="['player', { me: player.id === uid }]"
@@ -20,21 +20,123 @@
           <p :class="{ isActive: !player.canbeNominated }">
             canbeNominated: {{ player.canbeNominated }}
           </p>
-          <!-- <p>isLoser: {{ player.isLoser }}</p> -->
+          <p>isLoser: {{ player.isLoser }}</p>
           <p>handNum: {{ player.handNum }}</p>
           <p>burden</p>
           <p>{{ speciesOfBurden(player.burden) }}</p>
         </button>
       </div>
+      <div class="table-container">
+        <!-- ========================= CARD ZONE ========================== -->
+        <!-- ============= OTHER ZONE ============== -->
+        <div style="display:flex;">
+          <div v-for="player in otherPlayers" :key="player.id" style="width:300px;">
+            <div>
+              <div class="others-card-zone">
+                <div
+                  v-for="i in player.handNum"
+                  style="position:absolute;"
+                  :style="{
+                    left: otherLeft(i) + 'px',
+                    top: top(i) + 'px',
+                    transform: `rotate(${deg(i)}deg)`,
+                    background: 'black',
+                  }"
+                  :key="i"
+                >
+                  kipo
+                </div>
+              </div>
+            </div>
+            <div>
+              <div class="others-card-zone">
+                <div
+                  v-for="(card, i) in player.burden"
+                  style="position:absolute;"
+                  :style="{ left: left(i) + 'px' }"
+                  :class="[
+                    {
+                      king: card.type === 'king',
+                      yesno: card.type === 'yes' || card.type === 'no',
+                    },
+                  ]"
+                  :key="card.id"
+                >
+                  <div>{{ card.species }}</div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <!-- ============= MY ZONE ============== -->
+        <!-- BURDEN -->
+        <div>
+          <div class="my-card-zone">
+            <div
+              v-for="(card, i) in myBurden"
+              style="position:absolute;"
+              :style="{ left: left(i) + 'px' }"
+              :class="[
+                {
+                  king: card.type === 'king',
+                  yesno: card.type === 'yes' || card.type === 'no',
+                },
+              ]"
+              :key="card.id"
+            >
+              <div>{{ card.species }}</div>
+            </div>
+          </div>
+        </div>
+        <!-- GIVE用 -->
+        <div>
+          <div v-if="phase === 'give'" class="my-card-zone">
+            <button
+              v-for="(card, i) in hand"
+              @click="realId = card.id"
+              style="position:absolute;"
+              :style="{ left: left(i) + 'px' }"
+              :class="[
+                {
+                  king: card.type === 'king',
+                  yesno: card.type === 'yes' || card.type === 'no',
+                },
+              ]"
+              :key="card.id"
+            >
+              {{ card.species }}
+            </button>
+          </div>
+          <!-- YES/NO用 -->
+          <div v-if="phase === 'yesno'">
+            <div class="my-card-zone">
+              <button
+                v-for="(card, i) in hand"
+                @click="queue(card.id)"
+                style="position:absolute;"
+                :style="{ left: left(i) + 'px' }"
+                :class="[
+                  {
+                    king: card.type === 'king',
+                    yesno: card.type === 'yes' || card.type === 'no',
+                  },
+                ]"
+                :key="card.id"
+              >
+                {{ card.species }}
+              </button>
+            </div>
+            <template v-for="(burden, i) in burdens">
+              <p :key="burden.id">burden{{ i }}: {{ burden.species }}</p>
+            </template>
+            <button @click="burdensClear">clear</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- ========================= SELECT ZONE ========================== -->
       <!-- <pre>{{ me }}</pre> -->
       <div class="selecters">
-        <!-- realの選択 -->
-        <select v-model="realId">
-          <option value="" disabled selected>select a real</option>
-          <option v-for="card in hand" :key="card.id" :value="card.id">
-            <p>{{ card.type }} {{ card.species }}</p>
-          </option>
-        </select>
         <!-- declareの選択 -->
         <select v-model="declare">
           <option value="" disabled selected>select a declare</option>
@@ -46,18 +148,11 @@
             <p>{{ declareElement }}</p>
           </option>
         </select>
-        <!-- burdensの選択 -->
-        <select v-model="burdenIds" multiple size="10">
-          <option value="" disabled selected>select a burden(s)</option>
-          <option v-for="card in hand" :key="card.id" :value="card.id">
-            <p>{{ card.type }} {{ card.species }}</p>
-          </option>
-        </select>
       </div>
 
       <!-- <pre>{{ $data }}</pre> -->
 
-      <!-- ==================== buttons ==================== -->
+      <!-- ================================ buttons ================================ -->
       <div class="buttons">
         <button @click="join">Join</button>
         <!-- TODO退出関数作る -->
@@ -89,23 +184,6 @@
       <button @click="console">マイカード全部削除用(2021/3/2)</button>
       <button @click="initializeRoom">ルーム初期化用(2021/3/4)</button>
     </div>
-    <div style="position:relative;">
-      <div style="width:100px;height:300px;z-index:1;background:#333;position:absolute;">1</div>
-      <div
-        style="width:100px;height:300px;z-index:1;background:#333;position:absolute;left:10px;border:white;"
-      >
-        2
-      </div>
-      <div style="width:100px;height:300px;z-index:1;background:#333;position:absolute;left:20px;">
-        3
-      </div>
-      <div style="width:100px;height:300px;z-index:1;background:#333;position:absolute;left:30px;">
-        4
-      </div>
-    </div>
-    <div></div>
-    <div></div>
-    <div></div>
   </div>
 </template>
 
@@ -127,28 +205,26 @@ export default {
     roomId() {
       return this.$route.params.id
     },
-    inHand() {
-      // 一回スプレッドしてからオブジェクトに入れ込まないとaryがObserverになり、undefinedになる
-      return [...this.hand]
+    otherPlayers() {
+      return this.players.filter(player => player.id !== this.uid)
     },
-    inPlayers() {
-      return [...this.players]
-    },
-    me() {
-      const me = this.inPlayers.find(player => {
-        return player.id === this.uid
-      })
-      return { ...me }.name //スプレッドしないと表示できない例
-    },
+    // me() {
+    //   const me = this.players.find(player => {
+    //     return player.id === this.uid
+    //   })
+    //   return { ...me }.name //スプレッドしないと表示できない例
+    // },
     real() {
-      return this.inHand.find(card => {
+      return this.hand.find(card => {
         return card.id === this.realId
       })
     },
     burdens() {
+      //提出用1,2枚
       const burdens = []
       this.burdenIds.forEach(burdenId => {
-        const obj = this.inHand.find(card => {
+        //TODOforEachAsyncが使用できない、pluginの使い方が違う？
+        const obj = this.hand.find(card => {
           return card.id === burdenId
         })
         burdens.push(obj)
@@ -171,6 +247,18 @@ export default {
         phase: this.progress.phase,
       }
     },
+    myBurden() {
+      if (!this.uid || !this.players) return
+      const me = this.players.find(player => {
+        return player.id === this.uid
+      })
+      return { ...me }.burden
+    },
+
+    // inHand() {
+    //   // 一回スプレッドしてからオブジェクトに入れ込まないとaryがObserverになり、undefinedになる
+    //   return [...this.hand]
+    // },
   },
   async created() {
     const user = await this.$auth()
@@ -179,6 +267,26 @@ export default {
   },
   methods: {
     ...mapActions('basics', ['fetchBasics']),
+    left(i) {
+      return i * 44
+    },
+    otherLeft(i) {
+      return i * 10
+    },
+    deg(i) {
+      return -40 + 4 * i
+    },
+    top(i) {
+      return Math.pow(this.deg(i) * 0.1, 2)
+    },
+    queue(cardId) {
+      if (this.burdenIds.includes(cardId)) return //同じカードはburdensに入れ込めない
+      if (this.burdenIds.length > 1) this.burdenIds.pop() //2枚のときにunshiftする際はpopする
+      this.burdenIds.unshift(cardId)
+    },
+    burdensClear() {
+      while (this.burdenIds.length) this.burdenIds.pop() //配列の中身削除
+    },
     // ゲーム参加
     join() {
       const playerData = {
@@ -190,6 +298,11 @@ export default {
         isReady: false,
         isLoser: false,
         handNum: 0,
+        burden: [],
+      }
+      if (this.phase !== 'waiting') {
+        alert('waitingフェーズではありません')
+        return
       }
       this.$firestore.doc(`rooms/${this.roomId}/players/${this.uid}`).set(playerData)
     },
@@ -269,16 +382,6 @@ export default {
       const progressDoc = this.$firestore.doc(`rooms/${this.roomId}/progress/progDoc`)
       roomDoc.update(roomData)
       progressDoc.update(progressData)
-      this.inPlayers.forEach(player => {
-        const burdenCol = this.$firestore.collection(
-          `rooms/${this.roomId}/players/${player.id}/burden`
-        )
-        burdenCol.get().then(col => {
-          col.forEach(doc => {
-            doc.ref.delete()
-          })
-        })
-      })
     },
     answer(ans) {
       const answer = this.$fireFunc.httpsCallable('answer')
@@ -292,7 +395,6 @@ export default {
       const pass = this.$fireFunc.httpsCallable('pass')
       pass(this.roomId)
     },
-
     accumulate() {
       const accumulate = this.$fireFunc.httpsCallable('accumulate')
       const burdens = [...this.burdens] //とりあえずスプレッド、必要ない可能性あり
@@ -352,18 +454,29 @@ export default {
         }
       }
     },
-
     speciesOfBurden(burden) {
-      const ary = burden.map(card => {
-        return card.species
-      })
-      return ary
+      if (burden) {
+        const array = burden.map(card => {
+          return card.species
+        })
+        return array
+      }
     },
   },
 }
 </script>
 
 <style lang="scss" scoped>
+@mixin card {
+  height: 70px;
+  width: 40px;
+  border-radius: 0;
+  border: 1px solid white;
+  font-size: 15px;
+  display: grid;
+  place-items: center;
+  padding: 0;
+}
 .body {
   box-sizing: border-box;
   height: 200vh;
@@ -401,19 +514,35 @@ export default {
 .isActive {
   color: red;
 }
-.v-select {
-  color: #fffffe;
-  width: 200px;
-  height: 40px;
-  font-size: 14px;
-  border: 1px solid #fffffe;
-}
-.selecters {
-  display: flex;
-}
 select {
   background: #0f0e17;
   color: white;
   border: 1px solid white;
+}
+.table-container {
+  width: 800px;
+  margin: 0 auto;
+}
+.my-card-zone {
+  position: relative;
+  height: 100px;
+  div,
+  button {
+    @include card;
+  }
+}
+.others-card-zone {
+  position: relative;
+  height: 100px;
+  div {
+    @include card;
+  }
+}
+.king {
+  background: #ffcc99;
+  color: black;
+}
+.yesno {
+  background: #336699;
 }
 </style>

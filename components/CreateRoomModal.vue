@@ -43,7 +43,7 @@ export default {
   },
 
   methods: {
-    ...mapMutations('alert', ['setMessage']),
+    // ...mapMutations('alert', ['setMessage']),
     validateName() {
       const name = this.name
       if (!name.val) {
@@ -58,7 +58,7 @@ export default {
     },
     async onSubmit() {
       // 認証チェック
-      const user = await this.$auth()
+      const user = await this.$auth() 
       if (!user) this.$router.push('/login')
       // 入力値チェック
       this.validateName()
