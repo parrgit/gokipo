@@ -48,6 +48,7 @@ exports.gameStart = functions.https.onCall(async roomId => {
   const players = fireStore.collection(`rooms/${roomId}/players`)
   let allReady = true
   let canContinue = true
+  let sum = 0 //プレイヤー数
   await progress.get().then(doc => {
     const flag = doc.data().phase === 'waiting'
     canContinue = canContinue && flag
@@ -56,11 +57,8 @@ exports.gameStart = functions.https.onCall(async roomId => {
     console.log('THE GAME HAS ALREADY START')
     return
   }
-  let sum = 0 //プレイヤー数
-  await players.get().then(coll => {
-    coll.forEach(() => {
-      sum++
-    })
+  await players.get().then(col => {
+    sum = col.size
   })
   await room.get().then(doc => {
     const minNumber = doc.data().minNumber
@@ -84,15 +82,20 @@ exports.gameStart = functions.https.onCall(async roomId => {
 })
 
 async function gameStart_cardDistribution(sum, roomId) {
+  //------------------------- 準備↓ ----------------------------//
   let stack = [] //山札
   let handLength = 0 //各プレーヤーの手札枚数
-  let penaltySum = 0 //確認用
+  let penaltyLength //理論値≒7
+  let penaltyBodyNum = 0 //確認用
+  const PENALTY = 7
   const penalties = [] //ペナルティ
   const hands = []
   const reference = fireStore.collection('/reference')
   const penaltyTopDoc = fireStore.doc(`/rooms/${roomId}/penaltyTop/penaDoc`)
   const penaltyBodyCol = fireStore.collection(`/rooms/${roomId}/penaltyBody`)
   const players = fireStore.collection(`rooms/${roomId}/players`)
+  //------------------------- 準備↑ ----------------------------//
+
   //stackにreferenceを入れ込む
   await reference.get().then(col => {
     col.docs.forEach(doc => {
@@ -105,29 +108,33 @@ async function gameStart_cardDistribution(sum, roomId) {
   })
   //stackをシャッフル
   stack = _.shuffle(stack)
+  //penaltyの枚数を決定 通常7枚
+  penaltyLength = PENALTY + ((stack.length - PENALTY) % sum)
   // [penalty] 作成 stackから 7+(全数%プレイヤー数)枚入れ込む
-  for (let i = 6 + ((stack.length - 7) % sum); i >= 0; i--) {
-    //TODO7をPENALTY（定数）などにする
+  for (let i = penaltyLength - 1; i >= 0; i--) {
     while (stack[i].type === 'yes' || stack[i].type === 'no') {
       stack = _.shuffle(stack)
     }
     penalties.push(...stack.splice(i, 1))
   }
+
   // [penalty] Save 枚数が合うまで回す
   // 経緯 batch処理✗ -> for文✗ -> firestore直接確認して枚数あってなければもう一度やる方式にする
-  while (penaltySum < 6) {
-    penaltySum = 0
+  while (penaltyBodyNum < penaltyLength - 1) {
+    penaltyBodyNum = 0
     await penaltySave(roomId, penalties, penaltyBodyCol, penaltyTopDoc) //Save
     // 確認
     await penaltyBodyCol.get().then(col => {
-      col.forEach(() => {
-        penaltySum++
-      })
+      penaltyBodyNum = col.size
     })
   }
-  // [hand] 作成 残りのstackからstack/sum枚ずつ入れ込む
+  //penaltyTopにBodyNumを入れ込む
+  penaltyTopDoc.update({ bodyNum: penaltyBodyNum })
+
+  // [hand] 作成 残り (stack-penalty) のstackからstack/sum枚ずつ入れ込む
   handLength = stack.length / sum
   for (let i = 0; i < sum; i++) {
+    //一人ずつ入れ込む
     const hand = []
     for (let j = 0; j < handLength; j++) {
       const splice = stack.splice(0, 1)[0]
@@ -140,40 +147,38 @@ async function gameStart_cardDistribution(sum, roomId) {
     }
     hands.push(hand)
   }
-  //Save 枚数が合うまで回す
+  //[hand] Save 枚数が合うまで回す
   players.get().then(col => {
     //colはobjectなのでforEachでindexを取得できない → col.docsは配列なのでindex取得可◎
     col.docs.forEach(async (doc, i) => {
-      let handSum = 0 //確認用、ローカル変数である必要あり
-      while (handSum < handLength) {
-        handSum = 0
+      let handNum = 0 //確認用、ローカル変数である必要あり
+      while (handNum < handLength) {
+        handNum = 0
         await handsSave(roomId, doc.id, hands[i]) // [hand] Save
         // 確認
         const handCol = fireStore.collection(`/rooms/${roomId}/invPlayers/${doc.id}/hand`)
         await handCol.get().then(col => {
-          col.forEach(() => {
-            handSum++
-          })
+          handNum = col.size
         })
       }
       //自動化してあるがhttpsCallable↓に変更しても良い
       // 各プレーヤーにhandNumをセットする
       const playerRef = fireStore.doc(`/rooms/${roomId}/players/${doc.id}`)
-      await playerRef.update({ handNum: handSum })
+      await playerRef.update({ handNum: handNum })
     })
   })
 }
 
 async function penaltySave(roomId, penalties, penaltyBodyCol, penaltyTopDoc) {
   var batch = fireStore.batch()
-  //まずpenaltyコレクションを初期化
+  //まずpenaltyBodyコレクションを初期化
   await penaltyBodyCol.get().then(col => {
     col.forEach(doc => {
       doc.ref.delete()
     })
   })
   //Save
-  penalties.forEach((penalty, i) => {
+  await penalties.forEachAsync((penalty, i) => {
     const penaltyBodyDoc = fireStore.doc(`/rooms/${roomId}/penaltyBody/${penalty.id}`)
     if (i > 0) {
       batch.set(penaltyBodyDoc, { num: i - 1, type: penalty.type, species: penalty.species })
@@ -227,6 +232,7 @@ function phaseSet(roomId, phase) {
 
 exports.give = functions.https.onCall(async (submission, context) => {
   console.log('==============give================')
+  //------------------------- 準備↓ ----------------------------//
   let giversCardSum = 0
   let canContinue = true
   let acceptor = {
@@ -249,6 +255,7 @@ exports.give = functions.https.onCall(async (submission, context) => {
   )
   const authenticityDoc = fireStore.doc(`rooms/${roomId}/authenticity/authenDoc`)
   const realDoc = fireStore.doc(`rooms/${roomId}/real/realDoc`)
+  //------------------------- 準備↑ ----------------------------//
 
   //---バリデーション---//
   //phaseがgiveか、関数発火者のisGiverがtrueか
@@ -303,6 +310,9 @@ exports.give = functions.https.onCall(async (submission, context) => {
     species: real.species,
   })
   await realInGiverHandDoc.delete()
+  await giverHandCol.get().then(col => {
+    giverDoc.update({ handNum: col.size })
+  })
   await acceptorDoc.update({
     isAcceptor: true,
     canbeNominated: false,
@@ -331,7 +341,8 @@ function setAuthenticity(declare, real, authenticityDoc) {
   authenticityDoc.set({ authenticity: authenticity })
 }
 
-function stop() {
+function stop(loserId) {
+  //TODO負け手のisLoserをtrueに
   console.log('STOP!')
   return
 }
@@ -447,10 +458,8 @@ async function answerSubFunc(
   let sum = 0
   let oneHandType = ''
   let oneHandSpecies = ''
-  // let loserBurdenDoc = fireStore.doc(`rooms/${roomId}/players/${loserId}/burden/${real.id}`)
   const loserDoc = fireStore.doc(`rooms/${roomId}/players/${loserId}`)
   const loserHandCol = fireStore.collection(`rooms/${roomId}/invPlayers/${loserId}/hand`)
-  const loserBurdenCol = fireStore.collection(`rooms/${roomId}/players/${loserId}/burden`)
   const giverDoc = fireStore.doc(`rooms/${roomId}/players/${giverId}`) //受け手を出し手に変更する際に使用
 
   //oneHandType: 手札が1枚のときに使うtype (関数の中に入れ込んでも良い、可読性or動作性)
@@ -509,7 +518,7 @@ async function answerSubFunc(
       await loserDoc.update({ burden: admin.firestore.FieldValue.arrayUnion(real) })
     }
     //負け手のburdenを解析し、負け条件を満たしていないか判定
-    await judge(loserBurdenCol)
+    await judge(loserDoc)
     //受け手が負けの場合、受け手を出し手に変更
     if (loser === 'acceptor') {
       await loserDoc.update({ isGiver: true })
@@ -572,16 +581,19 @@ async function penaltyProcess(burden, roomId) {
   return burden
 }
 
-async function judge(loserBurdenCol) {
+async function judge(loserDoc) {
   const burdens = ['bat', 'crh', 'fly', 'frg', 'rat', 'spn', 'stk']
   let singleTotals = {}
   let speciesTotal = 0
+  //singleTotalsの初期化
   burdens.forEach(burden => {
     singleTotals[burden] = 0
   })
-  await loserBurdenCol.get().then(col => {
-    col.forEach(doc => {
-      switch (doc.data().species) {
+
+  await loserDoc.get().then(doc => {
+    const burden = doc.data().burden
+    burden.forEach(card => {
+      switch (card.species) {
         case 'bat':
           singleTotals.bat++
           break
@@ -606,6 +618,7 @@ async function judge(loserBurdenCol) {
       }
     })
   })
+  console.log(singleTotals) //TODO消す
   Object.values(singleTotals).forEach(arg => {
     if (arg > 3) {
       stop()
@@ -701,7 +714,6 @@ async function accumulateSub(roomId, burdens, declare, uid) {
   const playersCol = fireStore.collection(`rooms/${roomId}/players`)
   const accumulatorDoc = fireStore.doc(`/rooms/${roomId}/players/${uid}`)
   const accumulatorHandCol = fireStore.collection(`/rooms/${roomId}/invPlayers/${uid}/hand`)
-  const accumulatorBurdenCol = fireStore.collection(`/rooms/${roomId}/players/${uid}/burden`)
   const realDoc = fireStore.doc(`rooms/${roomId}/real/realDoc`)
   const progressDoc = fireStore.doc(`rooms/${roomId}/progress/progDoc`)
   await realDoc.get().then(doc => {
@@ -769,7 +781,7 @@ async function accumulateSub(roomId, burdens, declare, uid) {
       await accumulatorDoc.update({ burden: admin.firestore.FieldValue.arrayUnion(real) }) //TODO
     }
   })
-  judge(accumulatorBurdenCol)
+  await judge(accumulatorDoc)
   await accumulatorDoc.get().then(doc => {
     isAcceptor = doc.data().isAcceptor
   })
@@ -786,23 +798,26 @@ async function accumulateSub(roomId, burdens, declare, uid) {
     await accumulatorDoc.update({ isGiver: true, isAcceptor: false })
   }
   //yes/noカードをaccumulatorのhandに入れ込む
-  await accumulatorHandDoc.set({ type: real.type, species: real.species })
-  //提出burdensをhandから削除
-  //TODOaccumulate関数の最初のほうでやってもいいかも(他の関数と合わせる)
-  //手札から溜めるカードを削除
-  burdens.forEachAsync(async burden => {
+  await accumulatorHandDoc.set({ type: real.type, species: real.species }) //type: yes/no, species: yes/no
+  //手札から溜めるカードを削除(1,2枚)
+  await burdens.forEachAsync(async burden => {
     accumulatorHandDoc = fireStore.doc(`rooms/${roomId}/invPlayers/${uid}/hand/${burden.id}`)
     await accumulatorHandDoc.get().then(doc => {
       doc.ref.delete()
     })
   })
+  //handNumを更新
+  await accumulatorHandCol.get().then(col => {
+    accumulatorDoc.update({ handNum: col.size })
+  })
   //全プレイヤー情報を更新
-  playersCol.get().then(col => {
+  await playersCol.get().then(col => {
     col.forEach(doc => {
       doc.ref.update({ canbeNominated: true, isAcceptor: false })
     })
   })
   //accumulatorのisYesNoerをfalseに、次turnのgiverになるためcanbeNominatedをfalseに
+  //以下awaitつけない
   accumulatorDoc.get().then(doc => {
     doc.ref.update({ isYesNoer: false, canbeNominated: false })
   })

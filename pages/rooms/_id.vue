@@ -22,16 +22,15 @@
           </p>
           <p>isLoser: {{ player.isLoser }}</p>
           <p>handNum: {{ player.handNum }}</p>
-          <p>burden</p>
-          <p>{{ speciesOfBurden(player.burden) }}</p>
         </button>
       </div>
       <div class="table-container">
         <!-- ========================= CARD ZONE ========================== -->
         <!-- ============= OTHER ZONE ============== -->
         <div style="display:flex;">
-          <div v-for="player in otherPlayers" :key="player.id" style="width:300px;">
+          <div v-for="player in otherPlayers" :key="player.id" style="width:280px;margin:0 auto;">
             <div>
+              <!-- 手札 -->
               <div class="others-card-zone">
                 <div
                   v-for="i in player.handNum"
@@ -40,14 +39,12 @@
                     left: otherLeft(i) + 'px',
                     top: top(i) + 'px',
                     transform: `rotate(${deg(i)}deg)`,
-                    background: 'black',
                   }"
                   :key="i"
-                >
-                  kipo
-                </div>
+                ></div>
               </div>
             </div>
+            <!-- 厄介ゾーン -->
             <div>
               <div class="others-card-zone">
                 <div
@@ -66,6 +63,20 @@
                 </div>
               </div>
             </div>
+          </div>
+        </div>
+        <!-- ============= PENALTY ZONE ============== -->
+        <div class="penalty-zone">
+          <div
+            v-for="i in penaltyTop.bodyNum"
+            style="position:absolute;"
+            :style="{
+              top: penaTop(i) + 'px',
+            }"
+            :key="i"
+          ></div>
+          <div style="position:absolute;" :style="{ top: -(penaltyTop.bodyNum + 1) * 3 + 'px' }">
+            {{ penaltyTop.species }}
           </div>
         </div>
         <!-- ============= MY ZONE ============== -->
@@ -90,7 +101,7 @@
         </div>
         <!-- GIVE用 -->
         <div>
-          <div v-if="phase === 'give'" class="my-card-zone">
+          <div v-if="phase !== 'yesno'" class="my-card-zone">
             <button
               v-for="(card, i) in hand"
               @click="realId = card.id"
@@ -119,6 +130,8 @@
                   {
                     king: card.type === 'king',
                     yesno: card.type === 'yes' || card.type === 'no',
+                    selectedInBurden:
+                      card.id === { ...burdens[0] }.id || card.id === { ...burdens[1] }.id,
                   },
                 ]"
                 :key="card.id"
@@ -126,9 +139,7 @@
                 {{ card.species }}
               </button>
             </div>
-            <template v-for="(burden, i) in burdens">
-              <p :key="burden.id">burden{{ i }}: {{ burden.species }}</p>
-            </template>
+            <!-- yesno時、提出用burden 1,2枚 -->
             <button @click="burdensClear">clear</button>
           </div>
         </div>
@@ -152,7 +163,7 @@
 
       <!-- <pre>{{ $data }}</pre> -->
 
-      <!-- ================================ buttons ================================ -->
+      <!-- ================================ BUTTONS ================================ -->
       <div class="buttons">
         <button @click="join">Join</button>
         <!-- TODO退出関数作る -->
@@ -172,7 +183,7 @@
     <div class="subInfo">
       <pre>progress: {{ progress }}</pre>
       <pre>penaTop: {{ penaltyTop }}</pre>
-      <pre>{{ burdens }}</pre>
+      <pre>burdens: {{ burdens }}</pre>
     </div>
     <!-- ==================== debug tools ==================== -->
     <hr />
@@ -183,6 +194,7 @@
       <button @click="waiting">phaseをwaitingに</button>
       <button @click="console">マイカード全部削除用(2021/3/2)</button>
       <button @click="initializeRoom">ルーム初期化用(2021/3/4)</button>
+      <button @click="size">burdenゲット</button>
     </div>
   </div>
 </template>
@@ -229,7 +241,7 @@ export default {
         })
         burdens.push(obj)
       })
-      return burdens
+      return burdens || null
     },
     submission() {
       return {
@@ -263,12 +275,15 @@ export default {
   async created() {
     const user = await this.$auth()
     await this.fetchBasics({ roomId: this.roomId, uid: user.uid })
-    // await this.fetchBurdens({ roomId: this.roomId, uid: user.uid })
   },
   methods: {
     ...mapActions('basics', ['fetchBasics']),
+    size() {},
     left(i) {
       return i * 44
+    },
+    penaTop(i) {
+      return -i * 3
     },
     otherLeft(i) {
       return i * 10
@@ -401,8 +416,8 @@ export default {
       const declare = this.progress.declare
       let includeYesNo = false //提出カードにyes/noが含まれていないか
       if (this.progress.phase !== 'yesno') {
-        // alert('yesnoフェーズではありません')
-        // return //TODOつける
+        alert('yesnoフェーズではありません')
+        return
       }
       if (burdens.length < 1 || burdens.length > 2) {
         alert('宣言と同じカードであれば1枚、同じでなければ2枚出してください')
@@ -454,14 +469,6 @@ export default {
         }
       }
     },
-    speciesOfBurden(burden) {
-      if (burden) {
-        const array = burden.map(card => {
-          return card.species
-        })
-        return array
-      }
-    },
   },
 }
 </script>
@@ -476,6 +483,14 @@ export default {
   display: grid;
   place-items: center;
   padding: 0;
+  background: black;
+}
+.king {
+  color: black;
+  background: #cc9900 !important;
+}
+.yesno {
+  background: #336699 !important;
 }
 .body {
   box-sizing: border-box;
@@ -491,9 +506,9 @@ export default {
   border: 1px solid #fffffe;
   margin: auto;
   display: flex;
-  font-size: 14px;
   p {
     line-height: 10px;
+    font-size: 15px;
   }
 }
 .buttons {
@@ -538,11 +553,16 @@ select {
     @include card;
   }
 }
-.king {
-  background: #ffcc99;
-  color: black;
+.penalty-zone {
+  position: relative;
+  height: 100px;
+  width: 40px;
+  margin: 0 auto;
+  div {
+    @include card;
+  }
 }
-.yesno {
-  background: #336699;
+.selectedInBurden {
+  background: #3366cc !important;
 }
 </style>

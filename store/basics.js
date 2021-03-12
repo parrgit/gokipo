@@ -2,7 +2,6 @@ export const state = () => ({
   roomInfo: {},
   progress: {},
   penaltyTop: {},
-  penaltyBody: null, //TODO残り枚数
   players: [],
   hand: [],
 })
@@ -101,23 +100,9 @@ export const actions = {
         id: doc.data().id,
         type: doc.data().type,
         species: doc.data().species,
+        bodyNum: doc.data().bodyNum,
       }
       commit('addPenaltyTop', penaltyTop)
     })
   },
-  // async fetchBurdens({ dispatch }, { roomId, uid }) {
-  //   const playersCol = this.$firestore.collection(`rooms/${roomId}/players`)
-  //   playersCol.get().then(pCol => {
-  //     pCol.forEach(async pDoc => {
-  //       const playersBurdenCol = this.$firestore.collection(
-  //         `rooms/${roomId}/players/${pDoc.id}/burden`
-  //       )
-  //       await playersBurdenCol.onSnapshot(burCol => {
-  //         burCol.forEach(burDoc => {
-  //           dispatch('fetchBasics', { roomId: roomId, uid: uid })
-  //         })
-  //       })
-  //     })
-  //   })
-  // },
 }
