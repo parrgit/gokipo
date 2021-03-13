@@ -20,8 +20,7 @@ import { mapActions, mapGetters } from 'vuex'
 
 export default {
   data() {
-    return {
-    }
+    return {}
   },
   computed: {
     ...mapGetters('user', ['uname']),
@@ -54,5 +53,12 @@ h1 {
 header {
   display: flex;
   justify-content: space-between;
+}
+.right-block {
+  display: flex;
+  button {
+    padding: 5px;
+    margin-left: 30px;
+  }
 }
 </style>

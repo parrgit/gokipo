@@ -58,6 +58,7 @@ export const actions = {
     const handCol = this.$firestore.collection(`rooms/${roomId}/invPlayers/${uid}/hand`)
     const penaltyTopDoc = this.$firestore.doc(`rooms/${roomId}/penaltyTop/penaDoc`)
 
+    //TODODoc->Refの方が正確
     //roomをフェッチ
     await roomDoc.onSnapshot(doc => {
       const roomInfo = {

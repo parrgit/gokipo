@@ -19,7 +19,7 @@ export default {
   },
 
   // Global CSS (https://go.nuxtjs.dev/config-css)
-  css: ['@/assets/style.scss'],
+  css: ['@/assets/style.scss', 'animate.css/animate.min.css'],
 
   // Plugins to run before rendering page (https://go.nuxtjs.dev/config-plugins)
   plugins: ['~/plugins/firebase', '~/plugins/auth', '~/plugins/vueselect', '~/plugins/async'],

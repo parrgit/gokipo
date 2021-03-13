@@ -41,14 +41,16 @@ require('array-foreach-async') //npm i array-foreach-async
 //     changedPlayer.update({ handNum: handNum })
 //   })
 
+//TODO関数の説明 input:XX, output:XX オートマトン的な説明
 exports.gameStart = functions.https.onCall(async roomId => {
   console.log('----------GAME START!----------')
-  const room = fireStore.doc(`rooms/${roomId}`)
+  const room = fireStore.doc(`rooms/${roomId}`) //TODOroomRef
   const progress = fireStore.doc(`rooms/${roomId}/progress/progDoc`)
-  const players = fireStore.collection(`rooms/${roomId}/players`)
+  const players = fireStore.collection(`rooms/${roomId}/players`) //TODOplayersRef
   let allReady = true
   let canContinue = true
   let sum = 0 //プレイヤー数
+  //try catch
   await progress.get().then(doc => {
     const flag = doc.data().phase === 'waiting'
     canContinue = canContinue && flag
@@ -76,12 +78,15 @@ exports.gameStart = functions.https.onCall(async roomId => {
     })
   })
   if (!allReady) return
-  gameStart_cardDistribution(sum, roomId)
-  gameStart_determineGiver(roomId, players)
-  phaseSet(roomId, 'give')
+  gameStartCardDistoribution(sum, roomId)
+  gameStartDetermineGiver(roomId, players)
+  progress.update({
+    phase: 'give',
+  })
 })
 
-async function gameStart_cardDistribution(sum, roomId) {
+//TODO関数の説明
+async function gameStartCardDistoribution(sum, roomId) {
   //------------------------- 準備↓ ----------------------------//
   let stack = [] //山札
   let handLength = 0 //各プレーヤーの手札枚数
@@ -210,7 +215,7 @@ async function handsSave(roomId, uid, hand) {
   await batch.commit()
 }
 
-async function gameStart_determineGiver(roomId, players) {
+async function gameStartDetermineGiver(roomId, players) {
   const playerIDs = []
   await players.get().then(col => {
     col.docs.forEach(doc => {
@@ -223,13 +228,8 @@ async function gameStart_determineGiver(roomId, players) {
   firstPlayerDoc.update({ isGiver: true, canbeNominated: false })
 }
 
-function phaseSet(roomId, phase) {
-  progress = fireStore.doc(`/rooms/${roomId}/progress/progDoc`)
-  progress.update({
-    phase: phase,
-  })
-}
-
+//出し手が一名指名し、カードの中身を宣言し、提出する関数
+//input: declare,real{},acceptor output: none
 exports.give = functions.https.onCall(async (submission, context) => {
   console.log('==============give================')
   //------------------------- 準備↓ ----------------------------//
@@ -264,8 +264,7 @@ exports.give = functions.https.onCall(async (submission, context) => {
     canContinue = canContinue && flag
   })
   await giverDoc.get().then(doc => {
-    const flag = doc.data().isGiver === true
-    canContinue = canContinue && flag
+    canContinue = canContinue && doc.data().isGiver
   })
   if (!canContinue) return
   //手札存在するか
@@ -351,27 +350,35 @@ exports.pass = functions.https.onCall(async (roomId, context) => {
   console.log('-------------PASS-------------')
   let canContinue = true
   let canPass = false
-  const uid = context.auth.uid
   //firestore
   const roomDoc = fireStore.doc(`rooms/${roomId}`)
   const playersCol = fireStore.collection(`rooms/${roomId}/players`)
-  const acceptorDoc = fireStore.doc(`rooms/${roomId}/players/${uid}`)
+  const acceptorDoc = fireStore.doc(`rooms/${roomId}/players/${context.auth.uid}`)
   const progressDoc = fireStore.doc(`rooms/${roomId}/progress/progDoc`)
 
   //acceptフェーズであることの確認
   roomDoc.get().then(doc => {
     canContinue = canContinue && doc.data().phase === 'accept'
   })
-  if (!canContinue) return
+  //発火者のisAcceptorはtrueか
+  acceptorDoc.get().then(doc => {
+    canContinue = canContinue && doc.data().isAcceptor
+  })
+  if (!canContinue) {
+    console.log('acceptフェーズではない、またはpassした人が受け手ではない')
+    return
+  }
   //一人以上指名可であるかの確認
   await playersCol.get().then(col => {
     col.forEach(doc => {
       canPass = canPass || doc.data().canbeNominated
     })
   })
-  if (!canPass) return
+  if (!canPass) {
+    console.log('cant pass')
+    return
+  }
   //受け手を出し手に、出し手のisGiverをfalseにする
-  acceptorDoc.update({ isGiver: true, isAcceptor: false })
   await playersCol
     .where('isGiver', '==', true) //出し手をクエリ
     .get()
@@ -380,7 +387,8 @@ exports.pass = functions.https.onCall(async (roomId, context) => {
         doc.ref.update({ isGiver: false })
       })
     })
-  progressDoc.update({ phase: 'give' })
+  acceptorDoc.update({ isGiver: true, isAcceptor: false })
+  progressDoc.update({ phase: 'pass' })
 })
 
 exports.answer = functions.https.onCall(async (dataSet, context) => {
@@ -415,7 +423,6 @@ exports.answer = functions.https.onCall(async (dataSet, context) => {
     .where('isGiver', '==', true) //出し手をクエリ
     .get()
     .then(snapshot => {
-      //賢い書き方
       giverId = snapshot.docs[0].id
     })
   //------------------------- 準備↑ ----------------------------//
@@ -533,8 +540,15 @@ async function answerSubFunc(
         })
       })
     })
-    //負け手のcanbeNominatedをfalseに
-    await loserDoc.update({ canbeNominated: false }) //TODOfalseにできていない
+
+    // //accumulatorのisYesNoerをfalseに、次turnのgiverになるためcanbeNominatedをfalseに
+    // //以下awaitつけない
+    // accumulatorDoc.get().then(doc => {
+    //   doc.ref.update({ isYesNoer: false, canbeNominated: false })
+    // })
+
+    //負け手のcanbeNominatedをfalseに（次ターンgiverになるため）
+    await loserDoc.update({ canbeNominated: false }) //TODOバグ：falseにできていないときあり
     //phaseをgiveにする
     progressDoc.get().then(doc => {
       doc.ref.update({
@@ -544,30 +558,27 @@ async function answerSubFunc(
     })
   }
 }
-//←real←penaltyTop←penaltyBody[0]←penaltyBody[1]←..
+//←burden(real)←penaltyTop←penaltyBody[0]←penaltyBody[1]←..
 async function penaltyProcess(burden, roomId) {
   console.log('===========PENALTY PROCESS==========')
   const penaltyTopDoc = fireStore.doc(`/rooms/${roomId}/penaltyTop/penaDoc`)
   const penaltyBodyCol = fireStore.collection(`/rooms/${roomId}/penaltyBody`)
   const penaltyBodyTop = {} //penaltyBodyColのトップ(num===0)
-  //実物をペナルティの一番上にする
+  //burden(real)←penaltyTop
   await penaltyTopDoc.get().then(doc => {
     burden.id = doc.data().id
     burden.type = doc.data().type
     burden.species = doc.data().species
   })
-  //penaltyTopをpenaltyBodyの一番上にする→penaltyBodyの一番上を削除する
+  //penaltyTop←penaltyBody[0]
   await penaltyBodyCol
     .where('num', '==', 0)
     .get()
     .then(snapshot => {
-      //TODO書き方変えるsnapshot.docs[0].id, snapshot.docs[0].data().typeみたいな
-      snapshot.forEach(doc => {
-        penaltyBodyTop.id = doc.id
-        penaltyBodyTop.type = doc.data().type
-        penaltyBodyTop.species = doc.data().species
-        doc.ref.delete()
-      })
+      penaltyBodyTop.id = snapshot.docs[0].id
+      penaltyBodyTop.type = snapshot.docs[0].data().type
+      penaltyBodyTop.species = snapshot.docs[0].data().species
+      snapshot.docs[0].ref.delete()
     })
   await penaltyTopDoc.set(penaltyBodyTop)
   //penaltyBodyのnumを調整(-1)
@@ -577,6 +588,10 @@ async function penaltyProcess(burden, roomId) {
         num: doc.data().num - 1,
       })
     })
+  })
+  //penaltyTopにbodyNumをセット
+  penaltyBodyCol.get().then(col => {
+    penaltyTopDoc.update({ bodyNum: col.size })
   })
   return burden
 }
@@ -618,7 +633,6 @@ async function judge(loserDoc) {
       }
     })
   })
-  console.log(singleTotals) //TODO消す
   Object.values(singleTotals).forEach(arg => {
     if (arg > 3) {
       stop()
@@ -726,16 +740,14 @@ async function accumulateSub(roomId, burdens, declare, uid) {
 
   //手札測定
   await accumulatorHandCol.get().then(col => {
-    col.forEach(() => {
-      sum++
-    })
+    sum = col.size
   })
   //手札0枚
   if (sum < 1) {
     stop()
     return
   }
-  //バリデーション 選択したburdensが手札に存在するか
+
   //手札配列hand[]作製
   await accumulatorHandCol.get().then(col => {
     col.docs.forEach(async doc => {
@@ -747,7 +759,7 @@ async function accumulateSub(roomId, burdens, declare, uid) {
       hand.push(card)
     })
   })
-  //handにburdens(1or2枚)があるか
+  //hand[]にburdens(1or2枚)があるか
   //ループを抜けやすくするためにarray.someを使用(for文の方がいいとの情報もあり)
   burdens.some(burden => {
     let index = 0
@@ -767,18 +779,21 @@ async function accumulateSub(roomId, burdens, declare, uid) {
     }
     hand.splice(index, 1) //burdensが2枚でhandに1枚しかdeclareがない場合に必要
   })
-  //common
-  if (!canContinue) return
+  if (!canContinue) {
+    console.log('手札に提出カードが揃っていません')
+    return
+  }
+
   //1枚ずつburden保存（最大2枚）
   await burdens.forEachAsync(async burden => {
     //player(uid)/burdenにセット
-    await accumulatorDoc.update({ burden: admin.firestore.FieldValue.arrayUnion(burden) }) //TODO
+    await accumulatorDoc.update({ burden: admin.firestore.FieldValue.arrayUnion(burden) })
     //kingである限りpenaltyTopからburdenに保存し続ける
     //TODOwhile内でエラーあり（原因特定できておらず
     while (burden.type === 'king') {
       //KINGをセット
       burden = await penaltyProcess(burden, roomId)
-      await accumulatorDoc.update({ burden: admin.firestore.FieldValue.arrayUnion(real) }) //TODO
+      await accumulatorDoc.update({ burden: admin.firestore.FieldValue.arrayUnion(burden) })
     }
   })
   await judge(accumulatorDoc)
@@ -829,6 +844,69 @@ async function accumulateSub(roomId, burdens, declare, uid) {
   })
 }
 //TODObatch処理のところをforEachAsyncで書く
+
+exports.giveOfPass = functions.https.onCall(async (submission, context) => {
+  console.log('============== giveOfPass ================')
+  //------------------------- 準備↓ ----------------------------//
+  let canContinue = true
+  let real = {}
+  let acceptor = {
+    id: submission.acceptorId,
+  }
+  let giver = {
+    id: context.auth.uid,
+  }
+  const roomId = submission.roomId
+  const declare = submission.declare
+  const commons = ['bat', 'crh', 'fly', 'frg', 'rat', 'spn', 'stk']
+  // firestoreRefs
+  const progressDoc = fireStore.doc(`rooms/${roomId}/progress/progDoc`)
+  const giverHandCol = fireStore.collection(`/rooms/${roomId}/invPlayers/${giver.id}/hand`)
+  const giverDoc = fireStore.doc(`rooms/${roomId}/players/${giver.id}`)
+  const acceptorDoc = fireStore.doc(`rooms/${roomId}/players/${acceptor.id}`)
+  const realInGiverHandDoc = fireStore.doc(
+    `/rooms/${roomId}/invPlayers/${giver.id}/hand/${real.id}`
+  )
+  const authenticityDoc = fireStore.doc(`rooms/${roomId}/authenticity/authenDoc`)
+  const realDoc = fireStore.doc(`rooms/${roomId}/real/realDoc`)
+  await realDoc.get().then(doc => {
+    real = doc.data()
+  })
+  //------------------------- 準備↑ ----------------------------//
+
+  // ---バリデーション---//
+  // phaseがpassか、関数発火者のisGiverがtrueか
+  await progressDoc.get().then(doc => {
+    const flag = doc.data().phase === 'pass'
+    canContinue = canContinue && flag
+  })
+  await giverDoc.get().then(doc => {
+    canContinue = canContinue && doc.data().isGiver
+  })
+  if (!canContinue) {
+    console.log('phaseがpassではない、またはGiverによる実行ではありません')
+    return
+  }
+  //選択されたplayerは受け手になれるか
+  await acceptorDoc.get().then(doc => {
+    canContinue = canContinue && doc.data().canbeNominated
+  })
+  if (!canContinue) {
+    console.log('CANT BE ACCEPTOR')
+    return
+  }
+
+  setAuthenticity(declare, real, authenticityDoc)
+
+  await acceptorDoc.update({
+    isAcceptor: true,
+    canbeNominated: false,
+  })
+  await progressDoc.update({
+    declare: declare,
+    phase: 'accept',
+  })
+})
 
 //カード内容表示
 // let speciesTotalStack = {
