@@ -4,6 +4,7 @@ export const state = () => ({
   penaltyTop: {},
   players: [],
   hand: [],
+  secretReal: {},
 })
 
 export const getters = {
@@ -13,6 +14,7 @@ export const getters = {
   hand: state => state.hand,
   progress: state => state.progress,
   penaltyTop: state => state.penaltyTop,
+  secretReal: state => state.secretReal,
 }
 
 export const mutations = {
@@ -31,11 +33,25 @@ export const mutations = {
   addPenaltyTop(state, penaltyTop) {
     state.penaltyTop = penaltyTop
   },
-  addBurden(state, data) {
+
+  addBurden(state, playerDash) {
+    const obj = {} //crh:[], bat:[]..
+    const species = ['bat', 'crh', 'fly', 'frg', 'rat', 'spn', 'stk']
     const index = state.players.findIndex(player => {
-      return player.id === data.playerId
+      return player.id === playerDash.id
     })
-    state.players[index].burden.push(data.card)
+    species.forEach(species => {
+      //crh:[]
+      const array = playerDash.burden.filter(card => {
+        return card.species === species
+      })
+      obj[species] = array
+    })
+    state.players[index].burden = obj
+  },
+
+  addSecretReal(state, secretReal) {
+    state.secretReal = secretReal
   },
   resetPlayers(state) {
     state.players = []
@@ -55,10 +71,11 @@ export const actions = {
     const roomDoc = this.$firestore.doc(`rooms/${roomId}`)
     const progressDoc = this.$firestore.doc(`rooms/${roomId}/progress/progDoc`)
     const playersCol = this.$firestore.collection(`rooms/${roomId}/players`)
+    const invPlayerDoc = this.$firestore.doc(`rooms/${roomId}/invPlayers/${uid}`)
     const handCol = this.$firestore.collection(`rooms/${roomId}/invPlayers/${uid}/hand`)
     const penaltyTopDoc = this.$firestore.doc(`rooms/${roomId}/penaltyTop/penaDoc`)
 
-    //TODODoc->Refの方が正確
+    //TODODoc->Refの方が可読性up
     //roomをフェッチ
     await roomDoc.onSnapshot(doc => {
       const roomInfo = {
@@ -67,7 +84,8 @@ export const actions = {
       }
       commit('addRoomInfo', roomInfo)
     })
-    // playersの初期化、フェッチ（stateにプッシュするVer)
+    // playersをフェッチ
+    // players.burdenをフェッチ
     await playersCol.onSnapshot(async snapshot => {
       commit('resetPlayers')
       snapshot.forEach(async doc => {
@@ -77,6 +95,7 @@ export const actions = {
           ...doc.data(),
         }
         commit('addPlayer', player)
+        commit('addBurden', player)
       })
     })
     //progressをフェッチ
@@ -104,6 +123,11 @@ export const actions = {
         bodyNum: doc.data().bodyNum,
       }
       commit('addPenaltyTop', penaltyTop)
+    })
+    //secretRealをフェッチ
+    await invPlayerDoc.onSnapshot(doc => {
+      const secretReal = doc.data().secretReal || {}
+      commit('addSecretReal', secretReal)
     })
   },
 }

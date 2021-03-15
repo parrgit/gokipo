@@ -7,7 +7,6 @@
           {{ name.errorMessage }}
         </span>
       </div>
-
       <div>
         <button>
           Crete
@@ -19,8 +18,6 @@
 </template>
 
 <script>
-import { mapMutations } from 'vuex'
-
 export default {
   data() {
     return {
@@ -36,7 +33,6 @@ export default {
     isValidateError() {
       return this.name.errorMessage
     },
-
     maxLength() {
       return 35
     },
@@ -58,7 +54,7 @@ export default {
     },
     async onSubmit() {
       // 認証チェック
-      const user = await this.$auth() 
+      const user = await this.$auth()
       if (!user) this.$router.push('/login')
       // 入力値チェック
       this.validateName()
@@ -73,14 +69,9 @@ export default {
       }
       const progressData = {
         phase: 'waiting',
-        declare: null,
+        declare: '',
         turn: 0,
       }
-      // const realData = {
-      //   id: '',
-      //   type: '',
-      //   species: '',
-      // }
       try {
         await this.$firestore
           .collection('rooms')

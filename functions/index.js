@@ -274,7 +274,7 @@ exports.give = functions.https.onCall(async (submission, context) => {
     })
   })
   if (giversCardSum < 1) {
-    stop()
+    stop(roomId, giver.id) //ココは使われないはずだが、チート対策？として書いておく
     return
   }
   //選択したカードが存在するか
@@ -322,6 +322,71 @@ exports.give = functions.https.onCall(async (submission, context) => {
   })
 })
 
+//パスからのgive専用関数
+exports.giveOfPass = functions.https.onCall(async (submission, context) => {
+  console.log('============== giveOfPass ================')
+  //------------------------- 準備↓ ----------------------------//
+  let canContinue = true
+  let real = {}
+  let acceptor = {
+    id: submission.acceptorId,
+  }
+  let giver = {
+    id: context.auth.uid,
+  }
+  const roomId = submission.roomId
+  const declare = submission.declare
+  const commons = ['bat', 'crh', 'fly', 'frg', 'rat', 'spn', 'stk']
+  // firestoreRefs
+  const progressDoc = fireStore.doc(`rooms/${roomId}/progress/progDoc`)
+  const giverHandCol = fireStore.collection(`/rooms/${roomId}/invPlayers/${giver.id}/hand`)
+  const giverDoc = fireStore.doc(`rooms/${roomId}/players/${giver.id}`)
+  const acceptorDoc = fireStore.doc(`rooms/${roomId}/players/${acceptor.id}`)
+  const realInGiverHandDoc = fireStore.doc(
+    `/rooms/${roomId}/invPlayers/${giver.id}/hand/${real.id}`
+  )
+  const authenticityDoc = fireStore.doc(`rooms/${roomId}/authenticity/authenDoc`)
+  const realDoc = fireStore.doc(`rooms/${roomId}/real/realDoc`)
+  await realDoc.get().then(doc => {
+    real = doc.data()
+  })
+  //------------------------- 準備↑ ----------------------------//
+
+  // ---バリデーション---//
+  // phaseがpassか、関数発火者のisGiverがtrueか
+  await progressDoc.get().then(doc => {
+    const flag = doc.data().phase === 'pass'
+    canContinue = canContinue && flag
+  })
+  await giverDoc.get().then(doc => {
+    canContinue = canContinue && doc.data().isGiver
+  })
+  if (!canContinue) {
+    console.log('phaseがpassではない、またはGiverによる実行ではありません')
+    return
+  }
+  //選択されたplayerは受け手になれるか
+  await acceptorDoc.get().then(doc => {
+    canContinue = canContinue && doc.data().canbeNominated
+  })
+  if (!canContinue) {
+    console.log('CANT BE ACCEPTOR')
+    return
+  }
+
+  setAuthenticity(declare, real, authenticityDoc)
+
+  await acceptorDoc.update({
+    isAcceptor: true,
+    canbeNominated: false,
+  })
+  await progressDoc.update({
+    declare: declare,
+    phase: 'accept',
+  })
+})
+
+//真偽を算出して保存する
 function setAuthenticity(declare, real, authenticityDoc) {
   let authenticity = null
   if (real.type === 'yes') {
@@ -340,21 +405,50 @@ function setAuthenticity(declare, real, authenticityDoc) {
   authenticityDoc.set({ authenticity: authenticity })
 }
 
-function stop(loserId) {
-  //TODO負け手のisLoserをtrueに
+exports.surrender = functions.https.onCall(async (roomId, context) => {
+  let canContinue = true
+  const loserHandRef = fireStore.collection(`/rooms/${roomId}/invPlayers/${context.auth.uid}/hand`)
+  await loserHandRef.get().then(col => {
+    canContinue = canContinue && col.size === 0 //手札0なら関数を進めていく
+  })
+  if (!canContinue) {
+    console.log('負けではありません')
+    return
+  }
+  stop(roomId, context.auth.uid)
+})
+
+async function stop(roomId, uid) {
   console.log('STOP!')
-  return
+  const progressRef = fireStore.doc(`/rooms/${roomId}/progress/progDoc`)
+  const players = fireStore.collection(`/rooms/${roomId}/players`)
+  const loser = fireStore.doc(`/rooms/${roomId}/players/${uid}`)
+
+  await progressRef.get().then(doc => {
+    doc.ref.set({ phase: 'waiting', declare: '', turn: 0 })
+  })
+  await players.get().then(col => {
+    col.forEach(doc => {
+      doc.ref.update({ isReady: false })
+    })
+  })
+  await loser.get().then(doc => {
+    doc.ref.update({ isLoser: true })
+  })
 }
 
 exports.pass = functions.https.onCall(async (roomId, context) => {
   console.log('-------------PASS-------------')
   let canContinue = true
   let canPass = false
+  let secretReal = {} //クライアントへの送付用
   //firestore
   const roomDoc = fireStore.doc(`rooms/${roomId}`)
   const playersCol = fireStore.collection(`rooms/${roomId}/players`)
   const acceptorDoc = fireStore.doc(`rooms/${roomId}/players/${context.auth.uid}`)
+  const acceptorInvDoc = fireStore.doc(`rooms/${roomId}/invPlayers/${context.auth.uid}`)
   const progressDoc = fireStore.doc(`rooms/${roomId}/progress/progDoc`)
+  const realDoc = fireStore.doc(`rooms/${roomId}/real/realDoc`)
 
   //acceptフェーズであることの確認
   roomDoc.get().then(doc => {
@@ -378,6 +472,11 @@ exports.pass = functions.https.onCall(async (roomId, context) => {
     console.log('cant pass')
     return
   }
+  //secretRealをinvPlayers/uidに保存
+  await realDoc.get().then(doc => {
+    secretReal = doc.data()
+  })
+  acceptorInvDoc.set({ secretReal: secretReal })
   //受け手を出し手に、出し手のisGiverをfalseにする
   await playersCol
     .where('isGiver', '==', true) //出し手をクエリ
@@ -387,6 +486,7 @@ exports.pass = functions.https.onCall(async (roomId, context) => {
         doc.ref.update({ isGiver: false })
       })
     })
+  //次のステートへ
   acceptorDoc.update({ isGiver: true, isAcceptor: false })
   progressDoc.update({ phase: 'pass' })
 })
@@ -491,30 +591,30 @@ async function answerSubFunc(
     })
     //手札0枚
     if (sum < 1) {
-      stop() //TODOこの辺でstop()が2回呼ばれる現象が発生
+      stop(roomId, loserId) //TODOこの辺でstop()が2回呼ばれる現象が発生
       return
     } else if (sum === 1) {
       //手札1枚
       //king
       if (declare === 'king') {
         if (oneHandType === 'king') {
-          setYesNo(loserDoc, progressDoc)
+          shiftToYesno(loserDoc, progressDoc)
         } else {
-          stop()
+          stop(roomId, loserId)
           return
         }
         //common
       } else {
         if (oneHandSpecies === declare) {
-          setYesNo(loserDoc, progressDoc)
+          shiftToYesno(loserDoc, progressDoc)
         } else {
-          stop()
+          stop(roomId, loserId)
           return
         }
       }
     } else if (sum > 1) {
       //手札2枚以上
-      setYesNo(loserDoc, progressDoc)
+      shiftToYesno(loserDoc, progressDoc)
     }
   } else {
     //realがYES NO以外
@@ -525,7 +625,7 @@ async function answerSubFunc(
       await loserDoc.update({ burden: admin.firestore.FieldValue.arrayUnion(real) })
     }
     //負け手のburdenを解析し、負け条件を満たしていないか判定
-    await judge(loserDoc)
+    await judge(roomId, loserId)
     //受け手が負けの場合、受け手を出し手に変更
     if (loser === 'acceptor') {
       await loserDoc.update({ isGiver: true })
@@ -541,14 +641,13 @@ async function answerSubFunc(
       })
     })
 
-    // //accumulatorのisYesNoerをfalseに、次turnのgiverになるためcanbeNominatedをfalseに
-    // //以下awaitつけない
-    // accumulatorDoc.get().then(doc => {
-    //   doc.ref.update({ isYesNoer: false, canbeNominated: false })
-    // })
-
     //負け手のcanbeNominatedをfalseに（次ターンgiverになるため）
-    await loserDoc.update({ canbeNominated: false }) //TODOバグ：falseにできていないときあり
+    //give後、瞬時にanswerする場合に実行されない時があるので下記「OK」の書き方推奨
+    // await loserDoc.update({ canbeNominated: false })  BAD
+    loserDoc.get().then(doc => {
+      doc.ref.update({ canbeNominated: false }) //OK
+    })
+
     //phaseをgiveにする
     progressDoc.get().then(doc => {
       doc.ref.update({
@@ -596,10 +695,14 @@ async function penaltyProcess(burden, roomId) {
   return burden
 }
 
-async function judge(loserDoc) {
+// async function judge(loserDoc) {
+async function judge(roomId, loserId) {
+  console.log('=========== JUDGE ==========')
   const burdens = ['bat', 'crh', 'fly', 'frg', 'rat', 'spn', 'stk']
+  const loserDoc = fireStore.doc(`/rooms/${roomId}/players/${loserId}`)
   let singleTotals = {}
   let speciesTotal = 0
+  let canContinue = true
   //singleTotalsの初期化
   burdens.forEach(burden => {
     singleTotals[burden] = 0
@@ -635,27 +738,30 @@ async function judge(loserDoc) {
   })
   Object.values(singleTotals).forEach(arg => {
     if (arg > 3) {
-      stop()
-      return //TODO元関数を終わらせるように書く
+      stop(roomId, loserId)
+      canContinue = false
     } else if (arg > 0) {
       speciesTotal++
     }
   })
-  if (speciesTotal > 6) {
-    stop()
+  if (!canContinue) return
+  if (speciesTotal > 4) {
+    stop(roomId, loserId)
     return
   }
 }
 
-function setYesNo(loserDoc, progressDoc) {
+function shiftToYesno(loserDoc, progressDoc) {
   loserDoc.update({ isYesNoer: true })
   progressDoc.update({ phase: 'yesno' })
 }
 
+//yes/noを押し付けられた際に、宣言と同じもの1枚を溜めるか、宣言と違うもの2枚をためる
+//TODOburdens->accumulationsにする
 exports.accumulate = functions.https.onCall((submission, context) => {
   console.log('============================ACCUMULATE!================================')
   const roomId = submission.roomId
-  const burdens = submission.burdens //提出カード1or2枚
+  const burdens = submission.accumulations //提出カード1or2枚
   const declare = submission.declare
   const phase = submission.phase
   const uid = context.auth.uid
@@ -744,7 +850,7 @@ async function accumulateSub(roomId, burdens, declare, uid) {
   })
   //手札0枚
   if (sum < 1) {
-    stop()
+    stop(roomId, uid)
     return
   }
 
@@ -773,7 +879,8 @@ async function accumulateSub(roomId, burdens, declare, uid) {
       })
     }
     if (index === -1) {
-      stop()
+      //hand[]に提出カードなし
+      stop(roomId, uid)
       canContinue = false
       return true //burdens.someを抜ける
     }
@@ -787,16 +894,20 @@ async function accumulateSub(roomId, burdens, declare, uid) {
   //1枚ずつburden保存（最大2枚）
   await burdens.forEachAsync(async burden => {
     //player(uid)/burdenにセット
-    await accumulatorDoc.update({ burden: admin.firestore.FieldValue.arrayUnion(burden) })
+    await accumulatorDoc.get().then(async doc => {
+      await doc.ref.update({ burden: admin.firestore.FieldValue.arrayUnion(burden) })
+    })
     //kingである限りpenaltyTopからburdenに保存し続ける
     //TODOwhile内でエラーあり（原因特定できておらず
     while (burden.type === 'king') {
       //KINGをセット
       burden = await penaltyProcess(burden, roomId)
-      await accumulatorDoc.update({ burden: admin.firestore.FieldValue.arrayUnion(burden) })
+      await accumulatorDoc.get().then(async doc => {
+        await doc.ref.update({ burden: admin.firestore.FieldValue.arrayUnion(burden) })
+      })
     }
   })
-  await judge(accumulatorDoc)
+  await judge(roomId, uid)
   await accumulatorDoc.get().then(doc => {
     isAcceptor = doc.data().isAcceptor
   })
@@ -844,69 +955,6 @@ async function accumulateSub(roomId, burdens, declare, uid) {
   })
 }
 //TODObatch処理のところをforEachAsyncで書く
-
-exports.giveOfPass = functions.https.onCall(async (submission, context) => {
-  console.log('============== giveOfPass ================')
-  //------------------------- 準備↓ ----------------------------//
-  let canContinue = true
-  let real = {}
-  let acceptor = {
-    id: submission.acceptorId,
-  }
-  let giver = {
-    id: context.auth.uid,
-  }
-  const roomId = submission.roomId
-  const declare = submission.declare
-  const commons = ['bat', 'crh', 'fly', 'frg', 'rat', 'spn', 'stk']
-  // firestoreRefs
-  const progressDoc = fireStore.doc(`rooms/${roomId}/progress/progDoc`)
-  const giverHandCol = fireStore.collection(`/rooms/${roomId}/invPlayers/${giver.id}/hand`)
-  const giverDoc = fireStore.doc(`rooms/${roomId}/players/${giver.id}`)
-  const acceptorDoc = fireStore.doc(`rooms/${roomId}/players/${acceptor.id}`)
-  const realInGiverHandDoc = fireStore.doc(
-    `/rooms/${roomId}/invPlayers/${giver.id}/hand/${real.id}`
-  )
-  const authenticityDoc = fireStore.doc(`rooms/${roomId}/authenticity/authenDoc`)
-  const realDoc = fireStore.doc(`rooms/${roomId}/real/realDoc`)
-  await realDoc.get().then(doc => {
-    real = doc.data()
-  })
-  //------------------------- 準備↑ ----------------------------//
-
-  // ---バリデーション---//
-  // phaseがpassか、関数発火者のisGiverがtrueか
-  await progressDoc.get().then(doc => {
-    const flag = doc.data().phase === 'pass'
-    canContinue = canContinue && flag
-  })
-  await giverDoc.get().then(doc => {
-    canContinue = canContinue && doc.data().isGiver
-  })
-  if (!canContinue) {
-    console.log('phaseがpassではない、またはGiverによる実行ではありません')
-    return
-  }
-  //選択されたplayerは受け手になれるか
-  await acceptorDoc.get().then(doc => {
-    canContinue = canContinue && doc.data().canbeNominated
-  })
-  if (!canContinue) {
-    console.log('CANT BE ACCEPTOR')
-    return
-  }
-
-  setAuthenticity(declare, real, authenticityDoc)
-
-  await acceptorDoc.update({
-    isAcceptor: true,
-    canbeNominated: false,
-  })
-  await progressDoc.update({
-    declare: declare,
-    phase: 'accept',
-  })
-})
 
 //カード内容表示
 // let speciesTotalStack = {
