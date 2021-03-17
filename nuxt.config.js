@@ -22,7 +22,13 @@ export default {
   css: ['@/assets/style.scss', 'animate.css/animate.min.css'],
 
   // Plugins to run before rendering page (https://go.nuxtjs.dev/config-plugins)
-  plugins: ['~/plugins/firebase', '~/plugins/auth', '~/plugins/vueselect', '~/plugins/async'],
+  plugins: [
+    '~/plugins/firebase',
+    '~/plugins/auth',
+    '~/plugins/vueselect',
+    '~/plugins/async',
+    '~/plugins/user',
+  ],
 
   // Auto import components (https://go.nuxtjs.dev/config-components)
   components: true,

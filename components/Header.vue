@@ -5,11 +5,11 @@
         <p>＜</p>
       </nuxt-link>
     </template>
-    <h1>GOKIPO</h1>
+    <h1>SEVEN</h1>
     <div class="right-block">
       <p v-if="uname">{{ uname }}</p>
       <!-- ログインしていない時に気づかせる -->
-      <button style="line-height:1000px;" @click="login" v-if="!uname">login</button>
+      <button style="line-height:50px;" @click="login" v-if="!uname">login</button>
       <button style="line-height:20px;" @click="logout" v-if="uname">logout</button>
     </div>
   </header>

@@ -565,6 +565,7 @@ async function answerSubFunc(
   let sum = 0
   let oneHandType = ''
   let oneHandSpecies = ''
+  let canContinue = true
   const loserDoc = fireStore.doc(`rooms/${roomId}/players/${loserId}`)
   const loserHandCol = fireStore.collection(`rooms/${roomId}/invPlayers/${loserId}/hand`)
   const giverDoc = fireStore.doc(`rooms/${roomId}/players/${giverId}`) //受け手を出し手に変更する際に使用
@@ -624,8 +625,11 @@ async function answerSubFunc(
       real = await penaltyProcess(real, roomId)
       await loserDoc.update({ burden: admin.firestore.FieldValue.arrayUnion(real) })
     }
+
     //負け手のburdenを解析し、負け条件を満たしていないか判定
-    await judge(roomId, loserId)
+    canContinue = await judge(roomId, loserId)
+    if (!canContinue) return //judgeからfalseが返ってきたらanswer終了
+
     //受け手が負けの場合、受け手を出し手に変更
     if (loser === 'acceptor') {
       await loserDoc.update({ isGiver: true })
@@ -695,7 +699,6 @@ async function penaltyProcess(burden, roomId) {
   return burden
 }
 
-// async function judge(loserDoc) {
 async function judge(roomId, loserId) {
   console.log('=========== JUDGE ==========')
   const burdens = ['bat', 'crh', 'fly', 'frg', 'rat', 'spn', 'stk']
@@ -740,15 +743,17 @@ async function judge(roomId, loserId) {
     if (arg > 3) {
       stop(roomId, loserId)
       canContinue = false
+      return
     } else if (arg > 0) {
       speciesTotal++
     }
   })
-  if (!canContinue) return
+  if (!canContinue) return false
   if (speciesTotal > 4) {
     stop(roomId, loserId)
-    return
+    return false
   }
+  return true
 }
 
 function shiftToYesno(loserDoc, progressDoc) {
@@ -907,7 +912,10 @@ async function accumulateSub(roomId, burdens, declare, uid) {
       })
     }
   })
-  await judge(roomId, uid)
+
+  canContinue = await judge(roomId, uid)
+  if (!canContinue) return //judgeからfalseが返ってきたらanswer終了
+
   await accumulatorDoc.get().then(doc => {
     isAcceptor = doc.data().isAcceptor
   })

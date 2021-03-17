@@ -296,6 +296,7 @@
 <script>
 import { mapActions, mapGetters } from 'vuex'
 export default {
+  middleware: ['checkAuth'],
   data() {
     return {
       accumulationIds: [],

@@ -39,7 +39,6 @@ export default {
   },
 
   methods: {
-    // ...mapMutations('alert', ['setMessage']),
     validateName() {
       const name = this.name
       if (!name.val) {
@@ -78,13 +77,13 @@ export default {
           .add(roomData)
           .then(doc => {
             //progressセット
-            this.$firestore.doc(`rooms/${doc.id}/progress/progDoc`).set(progressData)
+            this.$firestore.doc(`/rooms/${doc.id}/progress/progDoc`).set(progressData)
             //realセット
-            this.$firestore.doc(`rooms/${doc.id}/real/realDoc`).set(realData)
+            this.$firestore.doc(`/rooms/${doc.id}/real/realDoc`).set(realData)
           })
         this.$emit('closeModal')
       } catch (e) {
-        this.setMessage({ message: '登録に失敗しました。' })
+        alert('登録に失敗しました')
       }
     },
     deleteRooms() {

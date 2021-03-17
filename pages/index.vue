@@ -30,7 +30,7 @@
 <script>
 import { mapState, mapGetters, mapActions } from 'vuex'
 export default {
-  // middleware: ["checkAuth"],
+  middleware: ["checkAuth"],
   data() {
     return {
       isActiveModal: false,
