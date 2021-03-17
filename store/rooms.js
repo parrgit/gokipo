@@ -1,3 +1,4 @@
+//TODOindex.vueに入れ込む（rooms.jsまで作る必要はない)
 export const state = () => ({
   rooms: [],
 })

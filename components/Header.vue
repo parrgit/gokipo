@@ -9,8 +9,8 @@
     <div class="right-block">
       <p v-if="uname">{{ uname }}</p>
       <!-- ログインしていない時に気づかせる -->
-      <button style="line-height:50px;" @click="login" v-if="!uname">login</button>
-      <button style="line-height:20px;" @click="logout" v-if="uname">logout</button>
+      <button style="line-height:50px;" @click="login" v-if="!login_user">login</button>
+      <button style="line-height:20px;" @click="logout" v-if="login_user">logout</button>
     </div>
   </header>
 </template>
@@ -23,7 +23,7 @@ export default {
     return {}
   },
   computed: {
-    ...mapGetters('user', ['uname']),
+    ...mapGetters('user', ['uname', 'login_user']),
     isRoomPage() {
       return this.$route.path.match(/\/rooms\/[A-Za-z0-9]*/)
     },

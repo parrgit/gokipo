@@ -5,6 +5,7 @@ export const state = () => ({
 export const getters = {
   uname: state => (state.login_user ? state.login_user.name : null),
   uid: state => (state.login_user ? state.login_user.uid : null),
+  login_user: state => (state.login_user ? state.login_user : null),
 }
 
 export const mutations = {
@@ -44,7 +45,10 @@ export const actions = {
   },
   //ログアウト
   logout() {
-    this.$fireAuth.signOut().then(() => {
+    console.log('logout!')
+    console.log(this.$auth())
+    this.$fireAuth.signOut()
+    .then(() => {
       this.$router.push('/'), location.reload()
     })
   },

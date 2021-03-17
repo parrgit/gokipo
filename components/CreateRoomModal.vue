@@ -13,7 +13,7 @@
         </button>
       </div>
     </form>
-    <button @click="deleteRooms">delete rooms</button>
+    <!-- <button @click="deleteRooms">delete rooms</button> -->
   </div>
 </template>
 
@@ -86,16 +86,16 @@ export default {
         alert('登録に失敗しました')
       }
     },
-    deleteRooms() {
-      this.$firestore
-        .collection('/rooms')
-        .get()
-        .then(snapshot => {
-          snapshot.forEach(doc => {
-            doc.ref.delete()
-          })
-        })
-    },
+    // deleteRooms() {
+    //   this.$firestore
+    //     .collection('/rooms')
+    //     .get()
+    //     .then(snapshot => {
+    //       snapshot.forEach(doc => {
+    //         doc.ref.delete()
+    //       })
+    //     })
+    // },
   },
 }
 </script>

@@ -1,7 +1,7 @@
 <template>
   <div>
     <pre>
-      Please login..               ->                          
+      Please login..                     
     </pre>
   </div>
 </template>
