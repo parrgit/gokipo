@@ -736,10 +736,10 @@ select {
   border: 2px solid lighten($basic, 30%) !important;
 }
 .king {
-  background: hsl(60, 90, 24%) !important;
+  background: hsl(60, 90%, 24%) !important;
 }
 .yesno {
-  background: hsl(200, 90, 24%) !important;
+  background: hsl(200, 90%, 24%) !important;
 }
 .common {
   background: $basic !important;
