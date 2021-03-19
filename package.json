@@ -12,6 +12,7 @@
   "dependencies": {
     "animate.css": "^4.1.1",
     "array-foreach-async": "^1.0.1",
+    "chalk": "^4.1.0",
     "core-js": "^3.6.5",
     "express": "^4.17.1",
     "firebase": "^8.2.2",
