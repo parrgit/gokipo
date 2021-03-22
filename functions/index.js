@@ -1,10 +1,10 @@
+const { cardDistribution } = require('./cardDistribution.js')
+require('array-foreach-async')
 const functions = require('firebase-functions')
 const admin = require('firebase-admin')
 admin.initializeApp()
 
 var fireStore = admin.firestore()
-var _ = require('lodash')
-require('array-foreach-async') //npm i array-foreach-async
 
 // サーバー側でリッスンの例【現時点では使わない】
 // functionsの仕組みによりフィールドの検知はできず、ドキュメントの検知となる
@@ -22,8 +22,8 @@ require('array-foreach-async') //npm i array-foreach-async
 //     console.log(change.after.data()) //変更されたドキュメントの内容を表示
 //   })
 
-//TODO1枚ずつ読んでしまうのでlazyに呼び出したいが..もしくはhttpsCallable関数に入れ込み負担を軽くする
-//TODO初期だけやらなければ使えるっちゃ使える
+//1枚ずつ読んでしまうのでlazyに呼び出したいが..もしくはhttpsCallable関数に入れ込み負担を軽くする
+//初期だけやらなければ使えるっちゃ使える
 // exports.calculateHandNums = functions.firestore
 //   .document('/rooms/{roomId}/invPlayers/{uid}/hand/{docId}')
 //   .onWrite(async (change, context) => {
@@ -44,192 +44,74 @@ require('array-foreach-async') //npm i array-foreach-async
 //TODO関数の説明 input:XX, output:XX オートマトン的な説明
 exports.gameStart = functions.https.onCall(async roomId => {
   console.log('----------GAME START!----------')
-  const room = fireStore.doc(`rooms/${roomId}`) //TODOroomRef
-  const progress = fireStore.doc(`rooms/${roomId}/progress/progDoc`)
-  const players = fireStore.collection(`rooms/${roomId}/players`) //TODOplayersRef
-  let allReady = true
   let canContinue = true
-  let sum = 0 //プレイヤー数
-  //try catch
-  await progress.get().then(doc => {
-    const flag = doc.data().phase === 'waiting'
-    canContinue = canContinue && flag
-  })
-  if (!canContinue) {
-    console.log('THE GAME HAS ALREADY START')
-    return
-  }
-  await players.get().then(col => {
-    sum = col.size
-  })
-  await room.get().then(doc => {
-    const minNumber = doc.data().minNumber
-    const maxNumber = doc.data().maxNumber
-    const flag = sum >= minNumber && sum <= maxNumber
-    canContinue = canContinue && flag
-  })
-  if (!canContinue) {
-    console.log('人数制限を満たしていません')
-    return
-  }
-  await players.get().then(coll => {
-    coll.forEach(doc => {
-      allReady = allReady && doc.data().isReady
-    })
-  })
-  if (!allReady) return
-  gameStartCardDistoribution(sum, roomId)
-  gameStartDetermineGiver(roomId, players)
-  progress.update({
-    phase: 'give',
-  })
-})
+  let playersNum = 0 //プレイヤー数
+  let phase = ''
+  let maxNumber = 0
+  let minNumber = 0
+  let allReady = true
 
-//TODO関数の説明
-async function gameStartCardDistoribution(sum, roomId) {
-  //------------------------- 準備↓ ----------------------------//
-  let stack = [] //山札
-  let handLength = 0 //各プレーヤーの手札枚数
-  let penaltyLength //理論値≒7
-  let penaltyBodyNum = 0 //確認用
-  const PENALTY = 7
-  const penalties = [] //ペナルティ
-  const hands = []
-  const reference = fireStore.collection('/reference')
-  const penaltyTopDoc = fireStore.doc(`/rooms/${roomId}/penaltyTop/penaDoc`)
-  const penaltyBodyCol = fireStore.collection(`/rooms/${roomId}/penaltyBody`)
-  const players = fireStore.collection(`rooms/${roomId}/players`)
-  //------------------------- 準備↑ ----------------------------//
-
-  //stackにreferenceを入れ込む
-  await reference.get().then(col => {
-    col.docs.forEach(doc => {
-      stack.push({
-        id: doc.id,
-        type: doc.data().type,
-        species: doc.data().species,
-      })
-    })
-  })
-  //stackをシャッフル
-  stack = _.shuffle(stack)
-  //penaltyの枚数を決定 通常7枚
-  penaltyLength = PENALTY + ((stack.length - PENALTY) % sum)
-  // [penalty] 作成 stackから 7+(全数%プレイヤー数)枚入れ込む
-  for (let i = penaltyLength - 1; i >= 0; i--) {
-    while (stack[i].type === 'yes' || stack[i].type === 'no') {
-      stack = _.shuffle(stack)
-    }
-    penalties.push(...stack.splice(i, 1))
-  }
-
-  // [penalty] Save 枚数が合うまで回す
-  // 経緯 batch処理✗ -> for文✗ -> firestore直接確認して枚数あってなければもう一度やる方式にする
-  while (penaltyBodyNum < penaltyLength - 1) {
-    penaltyBodyNum = 0
-    await penaltySave(roomId, penalties, penaltyBodyCol, penaltyTopDoc) //Save
-    // 確認
-    await penaltyBodyCol.get().then(col => {
-      penaltyBodyNum = col.size
-    })
-  }
-  //penaltyTopにBodyNumを入れ込む
-  penaltyTopDoc.update({ bodyNum: penaltyBodyNum })
-
-  // [hand] 作成 残り (stack-penalty) のstackからstack/sum枚ずつ入れ込む
-  handLength = stack.length / sum
-  for (let i = 0; i < sum; i++) {
-    //一人ずつ入れ込む
-    const hand = []
-    for (let j = 0; j < handLength; j++) {
-      const splice = stack.splice(0, 1)[0]
-      const card = {
-        id: splice.id,
-        type: splice.type,
-        species: splice.species,
-      }
-      hand.push(card)
-    }
-    hands.push(hand)
-  }
-  //[hand] Save 枚数が合うまで回す
-  players.get().then(col => {
-    //colはobjectなのでforEachでindexを取得できない → col.docsは配列なのでindex取得可◎
-    col.docs.forEach(async (doc, i) => {
-      let handNum = 0 //確認用、ローカル変数である必要あり
-      while (handNum < handLength) {
-        handNum = 0
-        await handsSave(roomId, doc.id, hands[i]) // [hand] Save
-        // 確認
-        const handCol = fireStore.collection(`/rooms/${roomId}/invPlayers/${doc.id}/hand`)
-        await handCol.get().then(col => {
-          handNum = col.size
-        })
-      }
-      //自動化してあるがhttpsCallable↓に変更しても良い
-      // 各プレーヤーにhandNumをセットする
-      const playerRef = fireStore.doc(`/rooms/${roomId}/players/${doc.id}`)
-      await playerRef.update({ handNum: handNum })
-    })
-  })
-}
-
-async function penaltySave(roomId, penalties, penaltyBodyCol, penaltyTopDoc) {
-  var batch = fireStore.batch()
-  //まずpenaltyBodyコレクションを初期化
-  await penaltyBodyCol.get().then(col => {
-    col.forEach(doc => {
-      doc.ref.delete()
-    })
-  })
-  //Save
-  await penalties.forEachAsync((penalty, i) => {
-    const penaltyBodyDoc = fireStore.doc(`/rooms/${roomId}/penaltyBody/${penalty.id}`)
-    if (i > 0) {
-      batch.set(penaltyBodyDoc, { num: i - 1, type: penalty.type, species: penalty.species })
-    } else {
-      batch.set(penaltyTopDoc, {
-        id: penalty.id,
-        type: penalty.type,
-        species: penalty.species,
-      })
-    }
-  })
-  await batch.commit()
-}
-
-async function handsSave(roomId, uid, hand) {
-  var batch = fireStore.batch()
-  const handCol = fireStore.collection(`/rooms/${roomId}/invPlayers/${uid}/hand`)
-  //まずhandコレクションを初期化
-  await handCol.get().then(col => {
-    col.forEach(doc => {
-      doc.ref.delete()
-    })
-  })
-  //Save
-  hand.forEach(card => {
-    const cardRef = fireStore.doc(`/rooms/${roomId}/invPlayers/${uid}/hand/${card.id}`)
-    batch.set(cardRef, { type: card.type, species: card.species })
-  })
-  await batch.commit()
-}
-
-async function gameStartDetermineGiver(roomId, players) {
   const playerIDs = []
-  await players.get().then(col => {
-    col.docs.forEach(doc => {
-      playerIDs.push(doc.id)
+  const progressRef = fireStore.doc(`rooms/${roomId}/progress/progDoc`)
+  const progressSnapshot = fireStore.doc(`rooms/${roomId}/progress/progDoc`).get()
+  const playersSnapshot = fireStore.collection(`rooms/${roomId}/players`).get()
+  const roomSnapshot = fireStore.doc(`rooms/${roomId}`).get()
+
+  await Promise.all([progressSnapshot, playersSnapshot, roomSnapshot])
+    .then(values => {
+      phase = values[0].data().phase //フェーズ
+      playersNum = values[1].size //人数
+      values[1].docs.forEach(player => {
+        allReady = allReady && player.data().isReady //全員Readyか
+        playerIDs.push(player.id) //最初の出し手選択用、playerID達のarray
+      })
+      maxNumber = values[2].data().maxNumber
+      minNumber = values[2].data().minNumber
     })
-  })
+    .catch(error => {
+      console.log(error)
+    })
+
+  const flag1 = phase === 'waiting'
+  const flag2 = playersNum >= minNumber && playersNum <= maxNumber
+  const flag3 = allReady
+
+  canContinue = flag1 && flag2 && flag3
+  if (!canContinue) return
+
+  cardDistribution(playersNum, roomId, fireStore)
+
+  //最初の出し手をランダムに選択
   const random = Math.floor(playerIDs.length * Math.random())
   const firstPlayerID = playerIDs.splice(random, 1)
   const firstPlayerDoc = fireStore.doc(`/rooms/${roomId}/players/${firstPlayerID}`)
   firstPlayerDoc.update({ isGiver: true, canbeNominated: false })
-}
+
+  //phaseをgiveにセット
+  progressRef.update({
+    phase: 'give',
+  })
+})
+
+// async function determineGiver(roomId) {
+//   const players = fireStore.collection(`rooms/${roomId}/players`)
+
+//   const playerIDs = []
+//   //TODOcollection->plyaersRef, doc->playerRef
+//   await players.get().then(col => {
+//     col.docs.forEach(doc => {
+//       playerIDs.push(doc.id)
+//     })
+//   })
+//   const random = Math.floor(playerIDs.length * Math.random())
+//   const firstPlayerID = playerIDs.splice(random, 1)
+//   const firstPlayerDoc = fireStore.doc(`/rooms/${roomId}/players/${firstPlayerID}`)
+//   firstPlayerDoc.update({ isGiver: true, canbeNominated: false })
+// }
 
 //出し手が一名指名し、カードの中身を宣言し、提出する関数
 //input: declare,real{},acceptor output: none
+//TODOloading「手札配布ちゅう」nuxtの「fetch」でやる, resolveが返ってきてないときは「loading」
 exports.give = functions.https.onCall(async (submission, context) => {
   console.log('==============give================')
   //------------------------- 準備↓ ----------------------------//
@@ -508,6 +390,7 @@ exports.answer = functions.https.onCall(async (dataSet, context) => {
   const progressDoc = fireStore.doc(`rooms/${roomId}/progress/progDoc`)
   const playersCol = fireStore.collection(`rooms/${roomId}/players`)
   const acceptorDoc = fireStore.doc(`rooms/${roomId}/players/${acceptorId}`)
+  //TODOここのgetはpromiseAllで簡潔させるreaal,authenticity,progress,players
   await realDoc.get().then(doc => {
     real.id = doc.data().id
     real.type = doc.data().type
@@ -525,7 +408,6 @@ exports.answer = functions.https.onCall(async (dataSet, context) => {
     .then(snapshot => {
       giverId = snapshot.docs[0].id
     })
-  //------------------------- 準備↑ ----------------------------//
   //phase===accept?
   await progressDoc.get().then(doc => {
     const flag = doc.data().phase === 'accept'
@@ -536,6 +418,7 @@ exports.answer = functions.https.onCall(async (dataSet, context) => {
     const flag = doc.data().isAcceptor === true
     canContinue = canContinue && flag
   })
+  //------------------------- 準備↑ ----------------------------//
   if (!canContinue) {
     console.log('phaseがacceptでないまたは発火者のisAcceptorがtrueではない')
     return
@@ -571,6 +454,7 @@ async function answerSubFunc(
   const giverDoc = fireStore.doc(`rooms/${roomId}/players/${giverId}`) //受け手を出し手に変更する際に使用
 
   //oneHandType: 手札が1枚のときに使うtype (関数の中に入れ込んでも良い、可読性or動作性)
+  //TODOpromiseAll
   await loserHandCol.get().then(col => {
     col.forEach(doc => {
       oneHandType = doc.data().type

@@ -616,7 +616,7 @@ export default {
 $basic: #0f0e17;
 @mixin card {
   height: 70px;
-  width: 40px;
+  min-width: 33px;
   border-radius: 3px;
   border: 1px solid white;
   font-size: 15px;
