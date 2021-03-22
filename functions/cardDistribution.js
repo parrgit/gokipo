@@ -72,8 +72,9 @@ exports.cardDistribution = async (playersNum, roomId, fireStore) => {
 
   // [hand] 作成 残り (stack-penalty) のstackからstack/sum枚ずつ入れ込む
   handLength = stack.length / playersNum
+
   for (let i = 0; i < playersNum; i++) {
-    //一人ずつ入れ込む
+    //一人ずつhandを作成
     const hand = []
     for (let j = 0; j < handLength; j++) {
       const splice = stack.splice(0, 1)[0]
@@ -91,10 +92,10 @@ exports.cardDistribution = async (playersNum, roomId, fireStore) => {
   await players.get().then(col => {
     //colはobjectなのでforEachでindexを取得できない → col.docsは配列なのでindex取得可◎
     col.docs.forEach(async (doc, i) => {
-      let handNum = 0 //確認用、ローカル変数である必要あり
-      while (handNum < handLength) {
+      // let handNum = 0 //確認用、ローカル変数である必要あり
+      // while (handNum < handLength) {
         var batch = fireStore.batch() //ローカル変数である必要あり
-        handNum = 0
+        // handNum = 0
         // [hand] Save
         const handCol = fireStore.collection(`/rooms/${roomId}/invPlayers/${doc.id}/hand`)
         //まずhandコレクションを初期化
@@ -103,8 +104,8 @@ exports.cardDistribution = async (playersNum, roomId, fireStore) => {
             doc.ref.delete()
           })
         })
-        //Save
-        hands[i].forEach(card => {
+        //Save ここをawaitにするとbatch処理がうまくいく様です...?
+        await hands[i].forEach(card => {
           const cardRef = fireStore.doc(`/rooms/${roomId}/invPlayers/${doc.id}/hand/${card.id}`)
           batch.set(cardRef, { type: card.type, species: card.species })
         })
@@ -112,13 +113,14 @@ exports.cardDistribution = async (playersNum, roomId, fireStore) => {
         await batch.commit()
 
         // 確認
-        await handCol.get().then(col => {
-          handNum = col.size
-        })
-      }
+        // await handCol.get().then(col => {
+        //   handNum = col.size
+        // })
+      // }
       // 各プレーヤーにhandNumをセットする
       const playerRef = fireStore.doc(`/rooms/${roomId}/players/${doc.id}`)
-      playerRef.update({ handNum: handNum })
+      playerRef.update({ handNum: handLength })
+      // playerRef.update({ handNum: handNum })
     })
   })
 }
