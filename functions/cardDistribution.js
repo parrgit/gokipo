@@ -1,13 +1,13 @@
 const { reference } = require('./reference.js') //山札
-var _ = require('lodash')
+const _ = require('lodash')
 
+//todo トランザクションで書いてみる？
 //カード配布関数
 exports.cardDistribution = async (playersNum, roomId, fireStore) => {
   //------------------------- 準備↓ ----------------------------//
-  var batch = fireStore.batch()
+  const batch = fireStore.batch()
   let handLength = 0 //各プレーヤーの手札枚数
   let penaltyLength // ≒7
-  // let penaltyBodyNum = 0 //確認用
   let stack = reference //山札
   const PENALTY = 7
   const penalties = [] //ペナルティ
@@ -23,7 +23,8 @@ exports.cardDistribution = async (playersNum, roomId, fireStore) => {
   //penaltyの枚数を決定 通常7枚
   penaltyLength = PENALTY + ((stack.length - PENALTY) % playersNum)
 
-  // [penalty] 作成 stackから 7+(全数%プレイヤー数)枚入れ込む
+  // ①[penalty] 作成
+  // stackから抜き出す 7+(全数%プレイヤー数)枚
   for (let i = penaltyLength - 1; i >= 0; i--) {
     while (stack[i].type === 'yes' || stack[i].type === 'no') {
       stack = _.shuffle(stack)
@@ -31,46 +32,8 @@ exports.cardDistribution = async (playersNum, roomId, fireStore) => {
     penalties.push(...stack.splice(i, 1))
   }
 
-  // [penalty] Save 枚数が合うまで回す
-  // 経緯 batch処理✗ -> for文✗ -> firestore直接確認して枚数あってなければもう一度やる方式にする
-  //TODOwhileいらない形に..検討
-  // while (penaltyBodyNum < penaltyLength - 1) {
-    // penaltyBodyNum = 0
-
-    //まずpenaltyBodyコレクションを初期化
-    await penaltyBodyCol.get().then(col => {
-      col.forEach(doc => {
-        doc.ref.delete()
-      })
-    })
-
-    //Save
-    penalties.forEach((penalty, i) => {
-      const penaltyBodyDoc = fireStore.doc(`/rooms/${roomId}/penaltyBody/${penalty.id}`)
-      if (i > 0) {
-        batch.set(penaltyBodyDoc, { num: i - 1, type: penalty.type, species: penalty.species })
-      } else {
-        batch.set(penaltyTopDoc, {
-          id: penalty.id,
-          type: penalty.type,
-          species: penalty.species,
-        })
-      }
-    })
-
-    await batch.commit()
-
-    // 確認
-    // await penaltyBodyCol.get().then(col => {
-    //   penaltyBodyNum = col.size
-    // })
-  // }
-
-  //penaltyTopにBodyNumを入れ込む
-  // penaltyTopDoc.update({ bodyNum: penaltyBodyNum })
-  penaltyTopDoc.update({ bodyNum: penaltyLength })
-
-  // [hand] 作成 残り (stack-penalty) のstackからstack/sum枚ずつ入れ込む
+  // ②[hand] 作成
+  // (stack - penalty) 枚のstackからstack/sum枚ずつ入れ込む
   handLength = stack.length / playersNum
 
   for (let i = 0; i < playersNum; i++) {
@@ -88,39 +51,58 @@ exports.cardDistribution = async (playersNum, roomId, fireStore) => {
     hands.push(hand)
   }
 
-  //[hand] Save 枚数が合うまで回す
-  await players.get().then(col => {
+  // ③[hand] Save
+  players.get().then(col => {
     //colはobjectなのでforEachでindexを取得できない → col.docsは配列なのでindex取得可◎
     col.docs.forEach(async (doc, i) => {
-      // let handNum = 0 //確認用、ローカル変数である必要あり
-      // while (handNum < handLength) {
-        var batch = fireStore.batch() //ローカル変数である必要あり
-        // handNum = 0
-        // [hand] Save
-        const handCol = fireStore.collection(`/rooms/${roomId}/invPlayers/${doc.id}/hand`)
-        //まずhandコレクションを初期化
-        await handCol.get().then(col => {
-          col.forEach(doc => {
-            doc.ref.delete()
-          })
-        })
-        //Save ここをawaitにするとbatch処理がうまくいく様です...?
-        await hands[i].forEach(card => {
-          const cardRef = fireStore.doc(`/rooms/${roomId}/invPlayers/${doc.id}/hand/${card.id}`)
-          batch.set(cardRef, { type: card.type, species: card.species })
-        })
+      const batch = fireStore.batch() //ローカル変数である必要あり
+      const handCol = fireStore.collection(`/rooms/${roomId}/invPlayers/${doc.id}/hand`)
 
-        await batch.commit()
+      // [hand] データベース初期化
+      await handCol.get().then(col => {
+        col.forEach(doc => {
+          batch.delete(doc.ref) //batch.deleteにすることによって枚数を安定して配れるように..!!!
+        })
+      })
 
-        // 確認
-        // await handCol.get().then(col => {
-        //   handNum = col.size
-        // })
-      // }
-      // 各プレーヤーにhandNumをセットする
+      // [hand] Save(batch処理)
+      hands[i].forEach(card => {
+        const cardRef = fireStore.doc(`/rooms/${roomId}/invPlayers/${doc.id}/hand/${card.id}`)
+        batch.set(cardRef, { type: card.type, species: card.species })
+      })
+
+      // [hand] 各プレーヤーにhandNumをセットする
       const playerRef = fireStore.doc(`/rooms/${roomId}/players/${doc.id}`)
-      playerRef.update({ handNum: handLength })
-      // playerRef.update({ handNum: handNum })
+      batch.update(playerRef, { handNum: handLength })
+
+      batch.commit()
     })
   })
+
+  // [penalty] データベース初期化
+  await penaltyBodyCol.get().then(col => {
+    col.forEach(doc => {
+      //doc.ref.delete()✗
+      batch.delete(doc.ref) //batch.deleteにすることによって枚数を安定して配れるように..!!!
+    })
+  })
+
+  // ④[penalty] Save
+  penalties.forEach((penalty, i) => {
+    const penaltyBodyDoc = fireStore.doc(`/rooms/${roomId}/penaltyBody/${penalty.id}`)
+    if (i > 0) {
+      batch.set(penaltyBodyDoc, { num: i - 1, type: penalty.type, species: penalty.species })
+    } else {
+      batch.set(penaltyTopDoc, {
+        id: penalty.id,
+        type: penalty.type,
+        species: penalty.species,
+      })
+    }
+  })
+
+  // [penalty] penaltyTopにBodyNumを書き込む
+  batch.update(penaltyTopDoc, { bodyNum: penaltyLength })
+
+  batch.commit()
 }

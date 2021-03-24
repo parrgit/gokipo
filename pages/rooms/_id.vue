@@ -102,7 +102,11 @@
             }"
             :key="i"
           ></div>
-          <div style="position:absolute;" :style="{ top: -(penaltyTop.bodyNum + 1) * 3 + 'px' }">
+          <div
+            v-show="Object.keys(penaltyTop).length"
+            style="position:absolute;"
+            :style="{ top: -(penaltyTop.bodyNum + 1) * 3 + 'px' }"
+          >
             {{ penaltyTop.species }}
           </div>
           <!-------------- REAL -------------->
@@ -402,7 +406,20 @@ export default {
     await this.fetchBasics({ roomId: this.roomId, uid: user.uid })
   },
   methods: {
-    test() {},
+    test() {
+      // const myRef = this.$firestore.doc(`/rooms/${this.roomId}/players/${this.uid}`)
+      // // myRef.update({ burden: admin.firestore.FieldValue.arrayRemove({ id: 'id0100010id' }) })
+      //firestoreのarrayから特定の要素を削除する方法
+      // myRef.update({
+      //   burden: this.$firebase.firestore.FieldValue.arrayRemove({
+      //     id: 'id0100010id',
+      //     species: 'frg',
+      //     type: 'common',
+      //   }),
+      // })
+      console.log(this.penaltyTop)
+      // console.log(Object.keys(this.penaltyTop).length)
+    },
     ...mapActions('basics', ['fetchBasics']),
     left(i) {
       return i * 44
@@ -777,4 +794,8 @@ select {
   border: 1px dashed white !important;
   color: white;
 }
+
+// .invisible {
+//   border-style: none;
+// }
 </style>
