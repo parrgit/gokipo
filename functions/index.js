@@ -348,6 +348,7 @@ exports.answer = functions.region('asia-northeast1').https.onCall(async (dataSet
     isAcceptor = values[3].data().isAcceptor
     giverId = values[4].docs[0].id
   })
+  //------------------------- 準備↑ ----------------------------//
 
   const flag1 = phase === 'accept'
   const flag2 = isAcceptor
@@ -357,7 +358,6 @@ exports.answer = functions.region('asia-northeast1').https.onCall(async (dataSet
     return
   }
 
-  //------------------------- 準備↑ ----------------------------//
   //出し手/受け手 どちらが勝ちか
   if (answer === authenticity) {
     //出し手負け
@@ -371,6 +371,7 @@ exports.answer = functions.region('asia-northeast1').https.onCall(async (dataSet
 //yes/noを押し付けられた際に、宣言と同じもの1枚を溜めるか、宣言と違うもの2枚をためる
 //TODOburdens->accumulationsにする
 exports.accumulate = functions.region('asia-northeast1').https.onCall((submission, context) => {
+  //------------------------- 準備↓ ----------------------------//
   console.log('============================ACCUMULATE!================================')
   const roomId = submission.roomId
   const burdens = submission.accumulations //提出カード1or2枚
@@ -378,15 +379,20 @@ exports.accumulate = functions.region('asia-northeast1').https.onCall((submissio
   const phase = submission.phase
   const uid = context.auth.uid
   let includeYesNo = false //提出カードにyes/noが含まれていないか
+  //------------------------- 準備↑ ----------------------------//
 
+  //------------------------- バリデーション↓ ----------------------------//
+  //フェーズチェック
   if (phase !== 'yesno') {
     console.log('yesnoフェーズではありません')
     return
   }
+  //枚数チェック
   if (burdens.length < 1 || burdens.length > 2) {
-    console.log('1,2枚溜められます')
-    return
+    console.log('1,2枚でないと溜められません')
+    return //0枚、3枚以上の場合return
   }
+  //yes,noが提出されている場合、はじく
   burdens.forEach(burden => {
     const flag = burden.type === 'yes' || burden.type === 'no'
     includeYesNo = includeYesNo || flag
@@ -395,6 +401,8 @@ exports.accumulate = functions.region('asia-northeast1').https.onCall((submissio
     console.log('yes/noは選択できません')
     return
   }
+  //------------------------- バリデーション↑ ----------------------------//
+
   //1枚提出
   if (burdens.length < 2) {
     if (declare === 'king') {

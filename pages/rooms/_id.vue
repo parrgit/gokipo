@@ -417,8 +417,6 @@ export default {
       //     type: 'common',
       //   }),
       // })
-      console.log(this.penaltyTop)
-      // console.log(Object.keys(this.penaltyTop).length)
     },
     ...mapActions('basics', ['fetchBasics']),
     left(i) {
@@ -750,7 +748,7 @@ select {
   }
 }
 .selectedInHand {
-  border: 2px solid lighten($basic, 30%) !important;
+  border: 2px solid lighten($basic, 40%) !important;
 }
 .king {
   background: hsl(60, 90%, 24%) !important;

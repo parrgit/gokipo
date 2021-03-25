@@ -1,3 +1,4 @@
+//todo getをanswerSub, accumulateSubに移行して高速化する
 const { stop } = require('./stop.js')
 
 exports.judge = async (roomId, loserId, fireStore) => {

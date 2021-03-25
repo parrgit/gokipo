@@ -1,7 +1,7 @@
 //←burden(real)←penaltyTop←penaltyBody[0]←penaltyBody[1]←..
 exports.penaltyProcess = async (burden, roomId, fireStore) => {
   //------------------------- 準備↓ ----------------------------//
-  console.log('===========PENALTY PROCESS==========')
+  console.log('=========== PENALTY PROCESS↓ ==========')
   const penaltyBodyTop = {} //penaltyBodyコレクションの最上(num===0)
   let penaltyBodyTopDocRef //delete用
   let penaltyBodySnap = null
@@ -55,11 +55,11 @@ exports.penaltyProcess = async (burden, roomId, fireStore) => {
     batch.delete(penaltyBodyTopDocRef)
   } else {
     //penaltyの最後の1枚を削除
-    console.log('iayfaefa') //todokesu
     batch.delete(penaltyTopDocRef)
   }
 
-  batch.commit()
+  await batch.commit() //await必要、無い場合2重にpenaltyProcessが回り、参照エラーを吐く（1順目でdeleteしたものを参照しにいくため？）
 
+  console.log('=========== PENALTY PROCESS↑ ==========')
   return burden
 }
