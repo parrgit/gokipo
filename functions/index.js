@@ -1,12 +1,11 @@
+require('array-foreach-async')
 const { cardDistribution } = require('./cardDistribution.js')
 const { answerSub } = require('./answerSub.js')
 const { accumulateSub } = require('./accumulateSub.js')
 const { stop } = require('./stop.js')
 const { getAuthenticity } = require('./getAuthenticity.js')
-
-const admin = require('firebase-admin')
-require('array-foreach-async')
 const functions = require('firebase-functions')
+const admin = require('firebase-admin')
 admin.initializeApp()
 var fireStore = admin.firestore()
 
@@ -15,12 +14,12 @@ var fireStore = admin.firestore()
 // 【発火可能条件】 phase:'waiting'
 exports.gameStart = functions.region('asia-northeast1').https.onCall(async roomId => {
   console.log('----------GAME START!----------')
-  let canContinue = true
+  let canContinue = true //関数継続可能かflag
   let playersNum = 0 //プレイヤー数
-  let phase = ''
-  let maxNumber = 0
-  let minNumber = 0
-  let allReady = true
+  let phase = '' //フェーズ
+  let maxNumber = 0 // 開始可能最大人数
+  let minNumber = 0 // 開始可能最小人数
+  let allReady = true //全員readyか
   const playerIDs = [] //初手の選択用、playerIDのarray
   //firestore
   const progressRef = fireStore.doc(`rooms/${roomId}/progress/progDoc`)
@@ -34,7 +33,7 @@ exports.gameStart = functions.region('asia-northeast1').https.onCall(async roomI
       playersNum = values[1].size //人数
       values[1].docs.forEach(doc => {
         allReady = allReady && doc.data().isReady //全員Readyか
-        playerIDs.push(player.id) //初手決定用arrayにpush
+        playerIDs.push(doc.id) //初手決定用arrayにpush
       })
       maxNumber = values[2].data().maxNumber // 開始可能最大人数
       minNumber = values[2].data().minNumber // 開始可能最小人数
@@ -46,7 +45,6 @@ exports.gameStart = functions.region('asia-northeast1').https.onCall(async roomI
   const flag1 = phase === 'waiting' //フェーズがwaitingか
   const flag2 = playersNum >= minNumber && playersNum <= maxNumber //設定人数に合致しているか
   const flag3 = allReady //全員readyしているか
-
   canContinue = flag1 && flag2 && flag3
   if (!canContinue) return //flag1~flag3を満たしていない→開始しない
 
@@ -65,7 +63,7 @@ exports.gameStart = functions.region('asia-northeast1').https.onCall(async roomI
   })
 })
 
-//TODOloading「手札配布ちゅう」nuxtの「fetch」でやる, resolveが返ってきてないときは「loading」
+//todo loading「手札配布中」nuxtの「fetch」でやる, resolveが返ってきてないときは「loading」
 //出し手が一名指名し、カードの中身を宣言し、提出する関数
 //input: declare,real{},acceptor output: none
 exports.give = functions.region('asia-northeast1').https.onCall(async (submission, context) => {
@@ -380,6 +378,7 @@ exports.accumulate = functions.region('asia-northeast1').https.onCall((submissio
         return
       } else {
         console.log('2枚溜める場合は、宣言と違う厄介者を溜めてください')
+        return
       }
     } else {
       if (accum[0].species !== declare && accum[1].species !== declare) {
@@ -387,6 +386,7 @@ exports.accumulate = functions.region('asia-northeast1').https.onCall((submissio
         return
       } else {
         console.log('2枚溜める場合は、宣言と違う厄介者を溜めてください')
+        return
       }
     }
   }

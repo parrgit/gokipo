@@ -212,15 +212,18 @@
             <div v-if="phase === 'yesno'" class="my-card-zone-hand">
               <button
                 v-for="card in hand"
+                :key="card"
                 @click="queue(card.id)"
-                :class="{
-                  king: card.type === 'king',
-                  yesno: card.type === 'yes' || card.type === 'no',
-                  selectedInHand:
-                    card.id === { ...accumulations[0] }.id ||
-                    card.id === { ...accumulations[1] }.id,
-                }"
-                :key="card.id"
+                :class="[
+                  'animate__animated animate__bounceIn',
+                  {
+                    king: card.type === 'king',
+                    yesno: card.type === 'yes' || card.type === 'no',
+                    selectedInHand:
+                      card.id === { ...accumulations[0] }.id ||
+                      card.id === { ...accumulations[1] }.id,
+                  },
+                ]"
               >
                 {{ card.species }}
               </button>
@@ -403,7 +406,6 @@ export default {
       })
       return canPass
     },
-    loserName() {}, //TODO
   },
   async created() {
     const user = await this.$auth()
@@ -578,7 +580,10 @@ export default {
       const accumulations = [...this.accumulations] //とりあえずスプレッド、必要ない可能性あり
       const declare = this.progress.declare
       let includeYesNo = false //提出カードにyes/noが含まれていないか
-      if (!accumulations) alert('溜めるカードを選択してください')
+      if (!accumulations) {
+        alert('溜めるカードを選択してください')
+        return
+      }
       if (this.progress.phase !== 'yesno') {
         alert('yesnoフェーズではありません')
         return

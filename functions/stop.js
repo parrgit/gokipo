@@ -7,7 +7,7 @@ exports.stop = async (roomId, uid, accumArray, fireStore, admin) => {
 
   batch.set(progressRef, { phase: 'waiting', declare: '', turn: 0 })
   playersSnapshot.docs.forEach(doc => {
-    batch.update(doc.ref, { isReady: false })
+    batch.update(doc.ref, { isReady: false, canbeNominated: true })
   })
   batch.update(loserDocRef, { isLoser: true })
 

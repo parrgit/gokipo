@@ -10,13 +10,12 @@ exports.penaltyProcess = async (roomId, fireStore) => {
   //firestore
   const batch = fireStore.batch()
   const penaltyTopDocRef = fireStore.doc(`/rooms/${roomId}/penaltyTop/penaDoc`)
-
   const penaltyTopDocSnapshot = fireStore.doc(`/rooms/${roomId}/penaltyTop/penaDoc`).get()
+  const penaltyBodySnapshot = fireStore.collection(`/rooms/${roomId}/penaltyBody`).get()
   const penaltyBodySnapshot_top = fireStore
     .collection(`/rooms/${roomId}/penaltyBody`)
     .where('num', '==', 0)
     .get()
-  const penaltyBodySnapshot = fireStore.collection(`/rooms/${roomId}/penaltyBody`).get()
   //------------------------- 準備↑ ----------------------------//
 
   await Promise.all([penaltyTopDocSnapshot, penaltyBodySnapshot_top, penaltyBodySnapshot]).then(
@@ -61,6 +60,5 @@ exports.penaltyProcess = async (roomId, fireStore) => {
 
   await batch.commit() //await必要、無い場合2重にpenaltyProcessが回り、参照エラーを吐く（1順目でdeleteしたものを参照しにいくため？）
 
-  console.log('=========== PENALTY PROCESS↑ ==========')
   return burden
 }
