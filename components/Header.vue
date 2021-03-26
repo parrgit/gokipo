@@ -5,7 +5,7 @@
         <p>＜</p>
       </nuxt-link>
     </template>
-    <h1>SEVEN</h1>
+    <h1>Purine</h1>
     <div class="right-block">
       <p v-if="uname">{{ uname }}</p>
       <!-- ログインしていない時に気づかせる -->

@@ -1,8 +1,9 @@
 //←burden(real)←penaltyTop←penaltyBody[0]←penaltyBody[1]←..
-exports.penaltyProcess = async (burden, roomId, fireStore) => {
+exports.penaltyProcess = async (roomId, fireStore) => {
   //------------------------- 準備↓ ----------------------------//
   console.log('=========== PENALTY PROCESS↓ ==========')
   const penaltyBodyTop = {} //penaltyBodyコレクションの最上(num===0)
+  const burden = {}
   let penaltyBodyTopDocRef //delete用
   let penaltyBodySnap = null
 

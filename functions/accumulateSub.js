@@ -10,6 +10,7 @@ exports.accumulateSub = async (roomId, outBurdens, declare, uid, fireStore, admi
   let turn = 0 //ターン数
   let canContinue = true
   let isAcceptor = false
+  let loserBurden //judge用
   const burdens = outBurdens.slice() //とりあえずスライスして値渡し..?
   const accumArray = [] //burdenコレクションに溜める用array
   const hand = []
@@ -60,18 +61,18 @@ exports.accumulateSub = async (roomId, outBurdens, declare, uid, fireStore, admi
     })
     isPenaltyTop = values[2].data()
     isAcceptor = values[3].data().isAcceptor
+    loserBurden = values[3].data().burden
     giverSnap = values[4]
     playersSnap = values[5]
     turn = values[6].data().turn
   })
   //------------------------- 準備↑ ----------------------------//
 
-  console.log(burdens) //todokesu
-
-  //TODO後学のため原因調査したほうが良い
+  // console.log(burdens) //todokesu
 
   // 手札から溜めるカードを削除(1,2枚)
-  //burdens[]がpenaltyProcessによってどうしても変わってしまうため、この位置とする（関数として問題なし）
+  //burdens[]がpenaltyProcess()によってどうしても変わってしまうため、この位置とする（関数として問題なし）
+  //TODO原因調査しましょう
   burdens.forEach(burden => {
     accumulatorHandDoc = fireStore.doc(`rooms/${roomId}/invPlayers/${uid}/hand/${burden.id}`)
     batch.delete(accumulatorHandDoc)
@@ -79,7 +80,7 @@ exports.accumulateSub = async (roomId, outBurdens, declare, uid, fireStore, admi
 
   //手札0枚
   if (sum < 1) {
-    stop(roomId, uid, fireStore)
+    stop(roomId, uid, null, fireStore, admin)
     return
   }
 
@@ -99,7 +100,7 @@ exports.accumulateSub = async (roomId, outBurdens, declare, uid, fireStore, admi
     }
     if (index === -1) {
       //hand[]に提出カードなし→負け
-      stop(roomId, uid, fireStore)
+      stop(roomId, uid, null, fireStore, admin)
       canContinue = false
       return true //burdens.someを抜ける
     }
@@ -120,19 +121,19 @@ exports.accumulateSub = async (roomId, outBurdens, declare, uid, fireStore, admi
     //penaltyTopが無い時はpenaltyProcessを実行しない
     if (isPenaltyTop) {
       while (burden.type === 'king') {
-        burden = await penaltyProcess(burden, roomId, fireStore)
+        burden = await penaltyProcess(roomId, fireStore)
         accumArray.push(Object.assign({}, burden)) //溜める用arrayにプッシュ、値渡し
-        console.log('while!!', burdens) //todokesu
+        // console.log('while!!', burdens) //todokesu
       }
     }
   })
 
-  //judgeするため、batch処理はできない
-  await accumulatorDoc.update({ burden: admin.firestore.FieldValue.arrayUnion(...accumArray) })
+  batch.update(accumulatorDoc, { burden: admin.firestore.FieldValue.arrayUnion(...accumArray) })
 
-  //todo 変える
-  canContinue = await judge(roomId, uid, fireStore) //========== JUDGE ==========
-  if (!canContinue) return //judgeからfalseが返ってきたらanswer終了
+  //負け手のburdenを解析し、負け条件を満たしていないか判定
+  const judgeBurden = loserBurden.concat(accumArray) //judge用、初期値＋今回溜めるもの達
+  canContinue = await judge(roomId, uid, judgeBurden, accumArray, fireStore, admin) //========== JUDGE ==========
+  if (!canContinue) return //judgeからfalseが返ってきたらaccumulate終了
 
   if (isAcceptor) {
     // 受け手を出し手に、出し手のisGiverをfalseにする

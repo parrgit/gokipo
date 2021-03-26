@@ -35,13 +35,13 @@ export const mutations = {
   },
 
   addBurden(state, playerDash) {
-    const obj = {} //crh:[], bat:[]..
-    const species = ['bat', 'crh', 'fly', 'frg', 'rat', 'spn', 'stk']
+    const obj = {} //ber:[], giz:[]..
+    const species = ['ber', 'gzd', 'lvr', 'mon', 'nbs', 'sal', 'srp']
     const index = state.players.findIndex(player => {
       return player.id === playerDash.id
     })
     species.forEach(species => {
-      //crh:[]
+      //ber:[]
       const array = playerDash.burden.filter(card => {
         return card.species === species
       })

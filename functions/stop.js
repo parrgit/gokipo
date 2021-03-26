@@ -1,18 +1,19 @@
-exports.stop = async (roomId, uid, fireStore) => {
+exports.stop = async (roomId, uid, accumArray, fireStore, admin) => {
   console.log('STOP!')
+  const batch = fireStore.batch()
   const progressRef = fireStore.doc(`/rooms/${roomId}/progress/progDoc`)
-  const players = fireStore.collection(`/rooms/${roomId}/players`)
-  const loser = fireStore.doc(`/rooms/${roomId}/players/${uid}`)
+  const loserDocRef = fireStore.doc(`/rooms/${roomId}/players/${uid}`)
+  const playersSnapshot = await fireStore.collection(`/rooms/${roomId}/players`).get()
 
-  progressRef.get().then(doc => {
-    doc.ref.set({ phase: 'waiting', declare: '', turn: 0 })
+  batch.set(progressRef, { phase: 'waiting', declare: '', turn: 0 })
+  playersSnapshot.docs.forEach(doc => {
+    batch.update(doc.ref, { isReady: false })
   })
-  players.get().then(col => {
-    col.forEach(doc => {
-      doc.ref.update({ isReady: false })
-    })
-  })
-  loser.get().then(doc => {
-    doc.ref.update({ isLoser: true })
-  })
+  batch.update(loserDocRef, { isLoser: true })
+
+  if (accumArray) {
+    batch.update(loserDocRef, { burden: admin.firestore.FieldValue.arrayUnion(...accumArray) }) //burdenを更新
+  }
+
+  batch.commit()
 }

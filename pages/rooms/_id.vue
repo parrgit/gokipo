@@ -45,7 +45,7 @@
               <p v-show="phase === 'accept' && player.isAcceptor">Hmm..</p>
               <p v-show="(phase === 'give' || phase === 'pass') && player.isGiver">Hmm..</p>
               <p v-show="phase === 'yesno' && player.isYesNoer">Ugh..</p>
-              <p v-show="phase === 'waiting' && player.isLoser">I'm loser..</p>
+              <p v-show="phase === 'waiting' && player.isLoser">I have gout..</p>
             </div>
 
             <div>
@@ -106,6 +106,10 @@
             v-show="Object.keys(penaltyTop).length"
             style="position:absolute;"
             :style="{ top: -(penaltyTop.bodyNum + 1) * 3 + 'px' }"
+            :class="{
+              common: penaltyTop.type === 'common',
+              king: penaltyTop.type === 'king',
+            }"
           >
             {{ penaltyTop.species }}
           </div>
@@ -154,7 +158,7 @@
           <p v-show="phase === 'accept' && me.isAcceptor">Hmm..</p>
           <p v-show="(phase === 'give' || phase === 'pass') && me.isGiver">Hmm..</p>
           <p v-show="phase === 'yesno' && me.isYesNoer">Ugh..</p>
-          <p v-show="phase === 'waiting' && me.isLoser">I'm loser..</p>
+          <p v-show="phase === 'waiting' && me.isLoser">I have gout..</p>
         </div>
         <div>
           <!-- 自分の厄介者ゾーン -->
@@ -307,8 +311,8 @@ export default {
       realId: '',
       declare: '',
       acceptorId: '',
-      declareElements: ['king', 'bat', 'crh', 'fly', 'frg', 'rat', 'spn', 'stk'],
-      speciesElements: ['bat', 'crh', 'fly', 'frg', 'rat', 'spn', 'stk'],
+      declareElements: ['ber', 'gzd', 'lvr', 'mon', 'nbs', 'sal', 'srp', 'king'],
+      speciesElements: ['ber', 'gzd', 'lvr', 'mon', 'nbs', 'sal', 'srp'],
       animateActive: false,
     }
   },
@@ -417,6 +421,12 @@ export default {
       //     type: 'common',
       //   }),
       // })
+      const array = [1, 2, 3, 4, 5]
+      console.log(array)
+      array.forEach(arg => {
+        arg = 0
+      })
+      console.log(array)
     },
     ...mapActions('basics', ['fetchBasics']),
     left(i) {
