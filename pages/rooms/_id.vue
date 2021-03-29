@@ -45,7 +45,7 @@
               <p v-show="phase === 'accept' && player.isAcceptor">Hmm..</p>
               <p v-show="(phase === 'give' || phase === 'pass') && player.isGiver">Hmm..</p>
               <p v-show="phase === 'yesno' && player.isYesNoer">Ugh..</p>
-              <p v-show="phase === 'waiting' && player.isLoser">I'm loser..</p>
+              <p v-show="phase === 'waiting' && player.isLoser">I have gout..</p>
             </div>
 
             <div>
@@ -103,9 +103,13 @@
             :key="i"
           ></div>
           <div
-            v-show="phase !== 'waiting'"
+            v-show="Object.keys(penaltyTop).length"
             style="position:absolute;"
             :style="{ top: -(penaltyTop.bodyNum + 1) * 3 + 'px' }"
+            :class="{
+              common: penaltyTop.type === 'common',
+              king: penaltyTop.type === 'king',
+            }"
           >
             {{ penaltyTop.species }}
           </div>
@@ -154,7 +158,7 @@
           <p v-show="phase === 'accept' && me.isAcceptor">Hmm..</p>
           <p v-show="(phase === 'give' || phase === 'pass') && me.isGiver">Hmm..</p>
           <p v-show="phase === 'yesno' && me.isYesNoer">Ugh..</p>
-          <p v-show="phase === 'waiting' && me.isLoser">I'm loser..</p>
+          <p v-show="phase === 'waiting' && me.isLoser">I have gout..</p>
         </div>
         <div>
           <!-- 自分の厄介者ゾーン -->
@@ -208,15 +212,18 @@
             <div v-if="phase === 'yesno'" class="my-card-zone-hand">
               <button
                 v-for="card in hand"
+                :key="card"
                 @click="queue(card.id)"
-                :class="{
-                  king: card.type === 'king',
-                  yesno: card.type === 'yes' || card.type === 'no',
-                  selectedInHand:
-                    card.id === { ...accumulations[0] }.id ||
-                    card.id === { ...accumulations[1] }.id,
-                }"
-                :key="card.id"
+                :class="[
+                  'animate__animated animate__bounceIn',
+                  {
+                    king: card.type === 'king',
+                    yesno: card.type === 'yes' || card.type === 'no',
+                    selectedInHand:
+                      card.id === { ...accumulations[0] }.id ||
+                      card.id === { ...accumulations[1] }.id,
+                  },
+                ]"
               >
                 {{ card.species }}
               </button>
@@ -273,8 +280,8 @@ export default {
       realId: '',
       declare: '',
       acceptorId: '',
-      declareElements: ['king', 'bat', 'crh', 'fly', 'frg', 'rat', 'spn', 'stk'],
-      speciesElements: ['bat', 'crh', 'fly', 'frg', 'rat', 'spn', 'stk'],
+      declareElements: ['ber', 'gzd', 'lvr', 'mon', 'nbs', 'sal', 'srp', 'king'],
+      speciesElements: ['ber', 'gzd', 'lvr', 'mon', 'nbs', 'sal', 'srp'],
       animateActive: false,
     }
   },
@@ -365,14 +372,30 @@ export default {
       })
       return canPass
     },
-    loserName() {}, //TODO
   },
   async created() {
     const user = await this.$auth()
     await this.fetchBasics({ roomId: this.roomId, uid: user.uid })
   },
   methods: {
-    test() {},
+    test() {
+      // const myRef = this.$firestore.doc(`/rooms/${this.roomId}/players/${this.uid}`)
+      // // myRef.update({ burden: admin.firestore.FieldValue.arrayRemove({ id: 'id0100010id' }) })
+      //firestoreのarrayから特定の要素を削除する方法
+      // myRef.update({
+      //   burden: this.$firebase.firestore.FieldValue.arrayRemove({
+      //     id: 'id0100010id',
+      //     species: 'frg',
+      //     type: 'common',
+      //   }),
+      // })
+      const array = [1, 2, 3, 4, 5]
+      console.log(array)
+      array.forEach(arg => {
+        arg = 0
+      })
+      console.log(array)
+    },
     ...mapActions('basics', ['fetchBasics']),
     left(i) {
       return i * 44
@@ -523,7 +546,10 @@ export default {
       const accumulations = [...this.accumulations] //とりあえずスプレッド、必要ない可能性あり
       const declare = this.progress.declare
       let includeYesNo = false //提出カードにyes/noが含まれていないか
-      if (!accumulations) alert('溜めるカードを選択してください')
+      if (!accumulations) {
+        alert('溜めるカードを選択してください')
+        return
+      }
       if (this.progress.phase !== 'yesno') {
         alert('yesnoフェーズではありません')
         return
@@ -586,7 +612,7 @@ export default {
 $basic: #0f0e17;
 @mixin card {
   height: 70px;
-  width: 40px;
+  min-width: 33px;
   border-radius: 3px;
   border: 1px solid white;
   font-size: 15px;
@@ -703,7 +729,7 @@ select {
   }
 }
 .selectedInHand {
-  border: 2px solid lighten($basic, 30%) !important;
+  border: 2px solid lighten($basic, 40%) !important;
 }
 .king {
   background: hsl(60, 90%, 24%) !important;
@@ -747,4 +773,8 @@ select {
   border: 1px dashed white !important;
   color: white;
 }
+
+// .invisible {
+//   border-style: none;
+// }
 </style>

@@ -14,6 +14,7 @@ export default ({ app }, inject) => {
   inject('firestore', firebase.firestore())
   inject('fireAuth', firebase.auth())
   inject('fireStorage', firebase.storage())
+  // inject('fireFunc', firebase.app().functions('asia-northeast1'))
   inject('fireFunc', firebase.functions())
 }
 

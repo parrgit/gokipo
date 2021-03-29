@@ -35,13 +35,13 @@ export const mutations = {
   },
 
   addBurden(state, playerDash) {
-    const obj = {} //crh:[], bat:[]..
-    const species = ['bat', 'crh', 'fly', 'frg', 'rat', 'spn', 'stk']
+    const obj = {} //ber:[], giz:[]..
+    const species = ['ber', 'gzd', 'lvr', 'mon', 'nbs', 'sal', 'srp']
     const index = state.players.findIndex(player => {
       return player.id === playerDash.id
     })
     species.forEach(species => {
-      //crh:[]
+      //ber:[]
       const array = playerDash.burden.filter(card => {
         return card.species === species
       })
@@ -77,7 +77,7 @@ export const actions = {
 
     //TODODoc->Refの方が可読性up
     //roomをフェッチ
-    await roomDoc.onSnapshot(doc => {
+    roomDoc.onSnapshot(doc => {
       const roomInfo = {
         roomId: doc.id,
         ...doc.data(),
@@ -86,7 +86,7 @@ export const actions = {
     })
     // playersをフェッチ
     // players.burdenをフェッチ
-    await playersCol.onSnapshot(async snapshot => {
+    playersCol.onSnapshot(async snapshot => {
       commit('resetPlayers')
       snapshot.forEach(async doc => {
         //player[]に保存
@@ -99,11 +99,11 @@ export const actions = {
       })
     })
     //progressをフェッチ
-    await progressDoc.onSnapshot(doc => {
+    progressDoc.onSnapshot(doc => {
       commit('addProgress', doc.data())
     })
     //【自分の】handの初期化、フェッチ
-    await handCol.orderBy('species').onSnapshot(col => {
+    handCol.orderBy('species').onSnapshot(col => {
       commit('resetHand')
       col.forEach(doc => {
         const card = {
@@ -115,17 +115,21 @@ export const actions = {
       })
     })
     //penaltyをフェッチ
-    await penaltyTopDoc.onSnapshot(doc => {
-      const penaltyTop = {
-        id: doc.data().id,
-        type: doc.data().type,
-        species: doc.data().species,
-        bodyNum: doc.data().bodyNum,
+    penaltyTopDoc.onSnapshot(doc => {
+      let penaltyTop = {}
+      if (doc.data()) {
+        penaltyTop = {
+          id: doc.data().id,
+          type: doc.data().type,
+          species: doc.data().species,
+          bodyNum: doc.data().bodyNum,
+        }
       }
       commit('addPenaltyTop', penaltyTop)
     })
+
     //secretRealをフェッチ
-    await invPlayerDoc.onSnapshot(doc => {
+    invPlayerDoc.onSnapshot(doc => {
       const secretReal = doc.data().secretReal || {}
       commit('addSecretReal', secretReal)
     })
