@@ -11,7 +11,7 @@ exports.accumulateSub = async (roomId, outBurdens, declare, uid, fireStore, admi
   let canContinue = true
   let isAcceptor = false
   let loserBurden //judge用
-  const burdens = outBurdens.slice() //とりあえずスライスして値渡し..?
+  const burdens = outBurdens.slice() //とりあえずスライスして値渡し..? スプレッド？
   const accumArray = [] //burdenコレクションに溜める用array
   const hand = []
   const real = {}
@@ -38,6 +38,7 @@ exports.accumulateSub = async (roomId, outBurdens, declare, uid, fireStore, admi
   const playersSnapshot = fireStore.collection(`rooms/${roomId}/players`).get()
   const progressDocSnapshot = fireStore.doc(`rooms/${roomId}/progress/progDoc`).get()
 
+  // TODO const [realDocs, accumulateHandDocs] = await Promise
   await Promise.all([
     realDocSnapshot,
     accumulatorHandSnapshot,
@@ -47,6 +48,7 @@ exports.accumulateSub = async (roomId, outBurdens, declare, uid, fireStore, admi
     playersSnapshot,
     progressDocSnapshot,
   ]).then(values => {
+    //value[0]
     real.id = values[0].data().id
     real.type = values[0].data().type
     real.species = values[0].data().species

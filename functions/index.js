@@ -13,40 +13,35 @@ var fireStore = admin.firestore()
 // output: none
 // 【発火可能条件】 phase:'waiting'
 exports.gameStart = functions.region('asia-northeast1').https.onCall(async roomId => {
+  //------------------------- 準備↓ ----------------------------//
   console.log('----------GAME START!----------')
-  let canContinue = true //関数継続可能かflag
-  let playersNum = 0 //プレイヤー数
-  let phase = '' //フェーズ
-  let maxNumber = 0 // 開始可能最大人数
-  let minNumber = 0 // 開始可能最小人数
-  let allReady = true //全員readyか
-  const playerIDs = [] //初手の選択用、playerIDのarray
+  let isContinuable = true //関数継続可能かflag
   //firestore
   const progressRef = fireStore.doc(`rooms/${roomId}/progress/progDoc`)
-  const progressSnapshot = fireStore.doc(`rooms/${roomId}/progress/progDoc`).get()
-  const playersSnapshot = fireStore.collection(`rooms/${roomId}/players`).get()
-  const roomSnapshot = fireStore.doc(`rooms/${roomId}`).get()
 
-  await Promise.all([progressSnapshot, playersSnapshot, roomSnapshot])
-    .then(values => {
-      phase = values[0].data().phase //フェーズ
-      playersNum = values[1].size //人数
-      values[1].docs.forEach(doc => {
-        allReady = allReady && doc.data().isReady //全員Readyか
-        playerIDs.push(doc.id) //初手決定用arrayにpush
-      })
-      maxNumber = values[2].data().maxNumber // 開始可能最大人数
-      minNumber = values[2].data().minNumber // 開始可能最小人数
-    })
-    .catch(error => {
-      console.log(error)
-    })
+  const [progressSnap, playersSnap, roomSnap] = await Promise.all([
+    fireStore.doc(`rooms/${roomId}/progress/progDoc`).get(),
+    fireStore.collection(`rooms/${roomId}/players`).get(),
+    fireStore.doc(`rooms/${roomId}`).get(),
+  ]).catch(error => {
+    console.log(error)
+  })
 
-  const flag1 = phase === 'waiting' //フェーズがwaitingか
-  const flag2 = playersNum >= minNumber && playersNum <= maxNumber //設定人数に合致しているか
-  const flag3 = allReady //全員readyしているか
-  canContinue = flag1 && flag2 && flag3
-  if (!canContinue) return //flag1~flag3を満たしていない→開始しない
+  const isWaiting = progressSnap.data().phase === 'waiting' //フェーズがwaitingか
+
+  const playersNum = playersSnap.size //参加人数
+  const isMatch = playersNum >= roomSnap.data().minNumber && playersNum <= roomSnap.data().maxNumber //設定人数に合致しているか
+
+  let isAllReady = true //全員readyか
+  const playerIDs = [] //初手の選択用、playerIDのarray
+  playersSnap.docs.forEach(doc => {
+    isAllReady = isAllReady && doc.data().isReady
+    playerIDs.push(doc.id) //初手決定用arrayにpush
+  })
+  //------------------------- 準備↑ ----------------------------//
+
+  isContinuable = isWaiting && isMatch && isAllReady //関数開始条件
+  if (!isContinuable) return //開始条件を満たしていなければリターン
 
   //カード配布関数
   cardDistribution(playersNum, roomId, fireStore)
@@ -63,63 +58,57 @@ exports.gameStart = functions.region('asia-northeast1').https.onCall(async roomI
   })
 })
 
-//todo loading「手札配布中」nuxtの「fetch」でやる, resolveが返ってきてないときは「loading」
 //出し手が一名指名し、カードの中身を宣言し、提出する関数
-//input: declare,real{},acceptor output: none
+//input: declare,real,acceptorId
+//output: none
 exports.give = functions.region('asia-northeast1').https.onCall(async (submission, context) => {
   console.log('==============give================')
   //------------------------- 準備↓ ----------------------------//
-  let canContinue = true //続行可能か判定flag
-  let flag1, flag2, flag3, flag4, flag5 //バリデーション用flags
-  let giverHandNum = 0 //出し手の手札枚数
-  let acceptorId = submission.acceptorId
-  let giverId = context.auth.uid
-  let authenticity = null
-  const roomId = submission.roomId
-  const real = submission.real
-  const declare = submission.declare
-  const commons = ['ber', 'gzd', 'lvr', 'mon', 'nbs', 'sal', 'srp']
+  let acceptorId = submission.acceptorId //受け手のid
+  let giverId = context.auth.uid //出し手（発火者のid）
+  const roomId = submission.roomId //ルームid
+  const real = submission.real //実物
+  const declare = submission.declare //宣言
+  const commons = ['ber', 'gzd', 'lvr', 'mon', 'nbs', 'sal', 'srp'] //宣言が正常かバリデーション用
 
-  // firestore系
+  // firestoreRefs
   const batch = fireStore.batch()
-  const progressDoc = fireStore.doc(`rooms/${roomId}/progress/progDoc`)
-  const giverDoc = fireStore.doc(`rooms/${roomId}/players/${giverId}`)
-  const acceptorDoc = fireStore.doc(`rooms/${roomId}/players/${acceptorId}`)
-  const realInGiverHandDoc = fireStore.doc(`/rooms/${roomId}/invPlayers/${giverId}/hand/${real.id}`)
-  const authenticityDoc = fireStore.doc(`rooms/${roomId}/authenticity/authenDoc`)
-  const realDoc = fireStore.doc(`rooms/${roomId}/real/realDoc`)
-  // snapshot系
-  const progressDocSnapshot = fireStore.doc(`rooms/${roomId}/progress/progDoc`).get()
-  const giverDocSnapshot = fireStore.doc(`rooms/${roomId}/players/${giverId}`).get()
-  const giverHandSnapshot = fireStore
-    .collection(`/rooms/${roomId}/invPlayers/${giverId}/hand`)
-    .get()
-  const realInGiverHandDocSnapshot = fireStore
-    .doc(`/rooms/${roomId}/invPlayers/${giverId}/hand/${real.id}`)
-    .get()
-  const acceptorDocSnapshot = fireStore.doc(`rooms/${roomId}/players/${acceptorId}`).get()
+  const progressDocRef = fireStore.doc(`rooms/${roomId}/progress/progDoc`)
+  const giverDocRef = fireStore.doc(`rooms/${roomId}/players/${giverId}`)
+  const acceptorDocRef = fireStore.doc(`rooms/${roomId}/players/${acceptorId}`)
+  const realInGiverHandDocRef = fireStore.doc(
+    `/rooms/${roomId}/invPlayers/${giverId}/hand/${real.id}`
+  )
+  const authenticityDocRef = fireStore.doc(`rooms/${roomId}/authenticity/authenDoc`)
+  const realDocRef = fireStore.doc(`rooms/${roomId}/real/realDoc`)
+
+  //snapshots
+  const [
+    giverHandSnap,
+    progressSnap,
+    giverDocSnap,
+    realInGiverHandDocSnap,
+    acceptorDocSnap,
+  ] = await Promise.all([
+    fireStore.collection(`/rooms/${roomId}/invPlayers/${giverId}/hand`).get(),
+    fireStore.doc(`rooms/${roomId}/progress/progDoc`).get(),
+    fireStore.doc(`rooms/${roomId}/players/${giverId}`).get(),
+    fireStore.doc(`/rooms/${roomId}/invPlayers/${giverId}/hand/${real.id}`).get(),
+    fireStore.doc(`rooms/${roomId}/players/${acceptorId}`).get(),
+  ])
+
+  const giverHandNum = giverHandSnap.size //出し手の手札枚数
+  const isGive = progressSnap.data().phase === 'give' //phaseがgiveか
+  const isGiver = giverDocSnap.data().isGiver //関数発火者のisGiverがtrueか
+  const isContain = Boolean(realInGiverHandDocSnap.data()) //手札に提出カードがあるか
+  const isNominatable = acceptorDocSnap.data().canbeNominated //選択されたplayerは受け手になれるか
+  const isValid = declare === 'king' || commons.includes(declare) //宣言が正常か
   //------------------------- 準備↑ ----------------------------//
 
-  await Promise.all([
-    giverHandSnapshot,
-    progressDocSnapshot,
-    giverDocSnapshot,
-    realInGiverHandDocSnapshot,
-    acceptorDocSnapshot,
-  ]).then(values => {
-    giverHandNum = values[0].size //手札枚数
-    flag1 = values[1].data().phase === 'give' //phaseがgiveか
-    flag2 = values[2].data().isGiver //関数発火者のisGiverがtrueか
-    flag3 = Boolean(values[3].data()) //手札に提出カードがあるか
-    flag4 = values[4].data().canbeNominated //選択されたplayerは受け手になれるか
-  })
-  flag5 = declare === 'king' || commons.includes(declare) //宣言が正常か
-  console.log(flag5) //todokesu
+  //バリデーション
+  const isContinuable = isGive && isGiver && isContain && isNominatable && isValid //続行可能か
 
-  //---バリデーション---
-  cancontinue = flag1 && flag2 && flag3 && flag4 && flag5
-
-  if (!canContinue) {
+  if (!isContinuable) {
     console.log('条件を満たしていません')
     return
   }
@@ -131,14 +120,14 @@ exports.give = functions.region('asia-northeast1').https.onCall(async (submissio
     return
   }
 
-  authenticity = getAuthenticity(declare, real) //真偽判定
+  const authenticity = getAuthenticity(declare, real) //真偽判定
 
-  batch.set(authenticityDoc, { authenticity: authenticity }) //真偽保存
-  batch.set(realDoc, { id: real.id, type: real.type, species: real.species }) //rooms/realをセット
-  batch.delete(realInGiverHandDoc) //手札から提出カード削除
-  batch.update(giverDoc, { handNum: giverHandNum - 1 }) //出し手のhandNumを更新
-  batch.update(acceptorDoc, { isAcceptor: true, canbeNominated: false }) //受け手のステート更新
-  batch.update(progressDoc, { declare: declare, phase: 'accept' }) //フェーズ更新
+  batch.set(authenticityDocRef, { authenticity: authenticity }) //真偽保存
+  batch.set(realDocRef, { id: real.id, type: real.type, species: real.species }) //rooms/realをセット
+  batch.delete(realInGiverHandDocRef) //手札から提出カード削除
+  batch.update(giverDocRef, { handNum: giverHandNum - 1 }) //出し手のhandNumを更新
+  batch.update(acceptorDocRef, { isAcceptor: true, canbeNominated: false }) //受け手のステート更新
+  batch.update(progressDocRef, { declare: declare, phase: 'accept' }) //フェーズ更新
   await batch.commit()
 })
 
@@ -148,14 +137,9 @@ exports.giveOfPass = functions
   .https.onCall(async (submission, context) => {
     console.log('============== giveOfPass ================')
     //------------------------- 準備↓ ----------------------------//
-    const roomId = submission.roomId
-    const declare = submission.declare
-    const acceptorId = submission.acceptorId
-
-    let canContinue = true // 実行継続可能か
-    let real = {} //実物
-    let authenticity = null //真偽
-    let flag1, flag2, flag3 //バリデーション用flags
+    const roomId = submission.roomId //ルームid
+    const declare = submission.declare //宣言
+    const acceptorId = submission.acceptorId //受け手のid
 
     // firestoreRefs
     const batch = fireStore.batch()
@@ -163,31 +147,27 @@ exports.giveOfPass = functions
     const acceptorDoc = fireStore.doc(`rooms/${roomId}/players/${acceptorId}`)
     const authenticityDoc = fireStore.doc(`rooms/${roomId}/authenticity/authenDoc`)
 
-    const realDocSnapshot = fireStore.doc(`rooms/${roomId}/real/realDoc`).get()
-    const progressDocSnapshot = fireStore.doc(`rooms/${roomId}/progress/progDoc`).get()
-    const giverDocSnapshot = fireStore.doc(`rooms/${roomId}/players/${context.auth.uid}`).get()
-    const acceptorDocSnapshot = fireStore.doc(`rooms/${roomId}/players/${acceptorId}`).get()
+    const [realDocSnap, progressDocSnap, giverDocSnap, acceptorDocSnap] = await Promise.all([
+      fireStore.doc(`rooms/${roomId}/real/realDoc`).get(),
+      fireStore.doc(`rooms/${roomId}/progress/progDoc`).get(),
+      fireStore.doc(`rooms/${roomId}/players/${context.auth.uid}`).get(),
+      fireStore.doc(`rooms/${roomId}/players/${acceptorId}`).get(),
+    ])
     //------------------------- 準備↑ ----------------------------//
-    await Promise.all([
-      realDocSnapshot,
-      progressDocSnapshot,
-      giverDocSnapshot,
-      acceptorDocSnapshot,
-    ]).then(values => {
-      real = values[0].data() //実物をフェッチ
-      flag1 = values[1].data().phase === 'pass' // phaseがpassか
-      flag2 = values[2].data().isGiver //関数発火者がgiverか
-      flag3 = values[3].data().canbeNominated //選択されたplayerは受け手になれるか
-    })
 
-    // ---バリデーション---//
-    canContinue = flag1 && flag2 && flag3
-    if (!canContinue) {
+    // ---バリデーション---
+    const isPass = progressDocSnap.data().phase === 'pass' // phaseがpassか
+    const isGiver = giverDocSnap.data().isGiver //関数発火者がgiverか
+    const isNominatable = acceptorDocSnap.data().canbeNominated //選択されたplayerは受け手になれるか
+    const isContinuable = isPass && isGiver && isNominatable
+    if (!isContinuable) {
       console.log('条件を満たしていないため、実行できません')
       return
     }
 
-    authenticity = getAuthenticity(declare, real)
+    const real = realDocSnap.data() //実物をフェッチ
+    const authenticity = getAuthenticity(declare, real) //実物・宣言から真偽を算出
+
     batch.set(authenticityDoc, { authenticity: authenticity })
     batch.update(acceptorDoc, { isAcceptor: true, canbeNominated: false })
     batch.update(progressDoc, { declare: declare, phase: 'accept' })
@@ -196,12 +176,12 @@ exports.giveOfPass = functions
   })
 
 exports.surrender = functions.region('asia-northeast1').https.onCall(async (roomId, context) => {
-  let canContinue
+  let isContinuable
   const loserHandRef = fireStore.collection(`/rooms/${roomId}/invPlayers/${context.auth.uid}/hand`)
   await loserHandRef.get().then(col => {
-    canContinue = col.size === 0 //手札0なら関数を進めていく
+    isContinuable = col.size === 0 //手札0なら関数を進めていく
   })
-  if (!canContinue) {
+  if (!isContinuable) {
     console.log('負けではありません')
     return
   }
@@ -210,46 +190,36 @@ exports.surrender = functions.region('asia-northeast1').https.onCall(async (room
 
 exports.pass = functions.region('asia-northeast1').https.onCall(async (roomId, context) => {
   console.log('-------------PASS-------------')
-  let canContinue = true
-  let flag1, flag2, flag3
-  let secretReal = {} //クライアントへの送付用
+  //------------------------- 準備↓ ----------------------------//
   //firestore
-  let giverSnap
   const batch = fireStore.batch()
   const acceptorDoc = fireStore.doc(`rooms/${roomId}/players/${context.auth.uid}`)
   const acceptorInvDoc = fireStore.doc(`rooms/${roomId}/invPlayers/${context.auth.uid}`)
   const progressDoc = fireStore.doc(`rooms/${roomId}/progress/progDoc`)
 
-  const progressDocSnapshot = fireStore.doc(`rooms/${roomId}/progress/progDoc`).get()
-  const acceptorDocSnapshot = fireStore.doc(`rooms/${roomId}/players/${context.auth.uid}`).get()
-  const playersSnapshot = fireStore.collection(`rooms/${roomId}/players`).get()
-  const realDocSnapshot = fireStore.doc(`rooms/${roomId}/real/realDoc`).get()
-  const giverSnapshot = fireStore
-    .collection(`rooms/${roomId}/players`)
-    .where('isGiver', '==', true) //出し手をクエリ
-    .get()
+  const [progressSnap, acceptorDocSnap, playersSnap, realDocSnap, giverSnap] = await Promise.all([
+    fireStore.doc(`rooms/${roomId}/progress/progDoc`).get(),
+    fireStore.doc(`rooms/${roomId}/players/${context.auth.uid}`).get(),
+    fireStore.collection(`rooms/${roomId}/players`).get(),
+    fireStore.doc(`rooms/${roomId}/real/realDoc`).get(),
+    fireStore
+      .collection(`rooms/${roomId}/players`)
+      .where('isGiver', '==', true) //出し手をクエリ
+      .get(),
+  ])
+  //------------------------- 準備↑ ----------------------------//
 
-  await Promise.all([
-    progressDocSnapshot,
-    acceptorDocSnapshot,
-    playersSnapshot,
-    realDocSnapshot,
-    giverSnapshot,
-  ]).then(values => {
-    flag1 = values[0].data().phase === 'accept' //acceptフェーズであることの確認
-    flag2 = values[1].data().isAcceptor //発火者のisAcceptorはtrueか
-    flag3 = Boolean(values[2].docs.find(doc => doc.data().canbeNominated)) //一人以上指名可であるかの確認
-    playersSnap = values[2]
-    secretReal = values[3].data() //前フェーズでgiverが出したrealを可視化する用（pass発火者のみ閲覧可）
-    giverSnap = values[4]
-  })
+  const isAccept = progressSnap.data().phase === 'accept' //acceptフェーズであることの確認
+  const isAcceptor = acceptorDocSnap.data().isAcceptor //発火者のisAcceptorはtrueか
+  const isNominatable = Boolean(playersSnap.docs.find(doc => doc.data().canbeNominated)) //一人以上指名可であるかの確認
 
-  canContinue = flag1 && flag2 && flag3
-  if (!canContinue) {
+  const isContinuable = isAccept && isAcceptor && isNominatable
+  if (!isContinuable) {
     console.log('条件を満たしていません')
     return
   }
 
+  const secretReal = realDocSnap.data() //前フェーズでgiverが出したrealを可視化する用（pass発火者のみクライアントにて閲覧可）
   batch.set(acceptorInvDoc, { secretReal: secretReal }) //secretRealをinvPlayers/発火者に保存
   batch.update(giverSnap.docs[0].ref, { isGiver: false }) //受け手を出し手に、出し手のisGiverをfalseにする
   batch.update(acceptorDoc, { isGiver: true, isAcceptor: false }) //受け手のステートを更新
@@ -264,45 +234,32 @@ exports.answer = functions.region('asia-northeast1').https.onCall(async (dataSet
   const roomId = dataSet.roomId //ルームID
   const answer = dataSet.ans //受け手の答え（本当/嘘）
   const acceptorId = context.auth.uid //受け手のid（answer発火者）
-  let giverId = '' //出し手id
-  let declare = '' //宣言
-  let real = {} //実物
-  let authenticity = null //真偽
-  let canContinue = true
-  let phase = ''
-  let isAcceptor = false //発火者がacceptorであるか、確認用
   //firestore
-  const realSnapshot = fireStore.doc(`rooms/${roomId}/real/realDoc`).get()
-  const authenticitySnapshot = fireStore.doc(`rooms/${roomId}/authenticity/authenDoc`).get()
-  const progressSnapshot = fireStore.doc(`rooms/${roomId}/progress/progDoc`).get()
-  const acceptorSnapshot = fireStore.doc(`rooms/${roomId}/players/${acceptorId}`).get()
-  const giverSnapshot = fireStore
+  const [realSnap, authenticitySnap, progressSnap, acceptorSnap, giverSnap] = await Promise.all([
+    fireStore.doc(`rooms/${roomId}/real/realDoc`).get(),
+    fireStore.doc(`rooms/${roomId}/authenticity/authenDoc`).get(),
+    fireStore.doc(`rooms/${roomId}/progress/progDoc`).get(),
+    fireStore.doc(`rooms/${roomId}/players/${acceptorId}`).get(),
+    fireStore
     .collection(`rooms/${roomId}/players`)
     .where('isGiver', '==', true)
-    .get()
+    .get(),
+  ])
+  
+  let real = {} //実物
+  real.id = realSnap.data().id
+  real.type = realSnap.data().type
+  real.species = realSnap.data().species
 
-  await Promise.all([
-    realSnapshot,
-    authenticitySnapshot,
-    progressSnapshot,
-    acceptorSnapshot,
-    giverSnapshot,
-  ]).then(values => {
-    real.id = values[0].data().id
-    real.type = values[0].data().type
-    real.species = values[0].data().species
-    authenticity = values[1].data().authenticity
-    declare = values[2].data().declare
-    phase = values[2].data().phase
-    isAcceptor = values[3].data().isAcceptor
-    giverId = values[4].docs[0].id
-  })
+  const authenticity = authenticitySnap.data().authenticity //真偽をフェッチ
+  const declare = progressSnap.data().declare //宣言をフェッチ
+  const isAccept = progressSnap.data().phase === 'accept' //フェーズがacceptか
+  const isAcceptor = acceptorSnap.data().isAcceptor //受け手（発火者のisAcceptor）をフェッチ
+  const giverId = giverSnap.docs[0].id //
   //------------------------- 準備↑ ----------------------------//
 
-  const flag1 = phase === 'accept'
-  const flag2 = isAcceptor
-  canContinue = flag1 && flag2
-  if (!canContinue) {
+  const isContinuable = isAccept && isAcceptor
+  if (!isContinuable) {
     console.log('フェーズがacceptではない、又は発火者がacceptorではない')
     return
   }
@@ -321,11 +278,11 @@ exports.answer = functions.region('asia-northeast1').https.onCall(async (dataSet
 exports.accumulate = functions.region('asia-northeast1').https.onCall((submission, context) => {
   //------------------------- 準備↓ ----------------------------//
   console.log('============================ACCUMULATE!================================')
-  const roomId = submission.roomId
-  const accum = submission.accumulations //提出カード1or2枚
-  const declare = submission.declare
-  const phase = submission.phase
-  const uid = context.auth.uid
+  const roomId = submission.roomId //ルームid
+  const accum = submission.accumulations //提出カード(1or2枚)
+  const declare = submission.declare //宣言
+  const phase = submission.phase //フェーズ
+  const uid = context.auth.uid //溜め手のid
   let includeYesNo = false //提出カードにyes/noが含まれていないか
   //------------------------- 準備↑ ----------------------------//
 
@@ -340,7 +297,7 @@ exports.accumulate = functions.region('asia-northeast1').https.onCall((submissio
     console.log('1,2枚でないと溜められません')
     return //0枚、3枚以上の場合return
   }
-  //yes,noが提出されている場合、はじく
+  //yes,noが提出されている場合はじく
   accum.forEach(burden => {
     const flag = burden.type === 'yes' || burden.type === 'no'
     includeYesNo = includeYesNo || flag
@@ -350,6 +307,8 @@ exports.accumulate = functions.region('asia-northeast1').https.onCall((submissio
     return
   }
   //------------------------- バリデーション↑ ----------------------------//
+
+  //以下、「1枚提出」「2枚提出」でもバリデーションあり
 
   //1枚提出
   if (accum.length < 2) {
