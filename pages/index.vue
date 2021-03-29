@@ -10,20 +10,6 @@
     <ModalBase v-if="isActiveModal" @closeModal="closeModal">
       <CreateRoomModal @closeModal="closeModal" />
     </ModalBase>
-    <hr />
-    <h2>for debug</h2>
-    <div class="container">
-      <form @submit.prevent="addCard">
-        <input type="text" placeholder="type" v-model="type" />
-        <input type="text" placeholder="species" v-model="species" />
-        <button type="submit">ADD card</button>
-      </form>
-      <button @click="deleteCards">speciesまたはtype==''のカードを削除</button>
-      <button @click="displayCards">referenceを取得して表示</button>
-      <button @click="ObjArg({ type: 'common', species: 'crh' })">引数にobjectいける？</button>
-      <button @click="displayUser">user情報確認</button>
-      <pre>{{ $data }}</pre>
-    </div>
   </div>
 </template>
 
