@@ -192,6 +192,7 @@
           <!-- GIVE,ACCEPT,(WAITING)用 -->
           <div>
             <div v-if="phase !== 'yesno'" class="my-card-zone-hand">
+              
               <button
                 v-for="card in hand"
                 :key="card.id"
@@ -205,6 +206,11 @@
                   },
                 ]"
               >
+              <img
+                v-show="card.species==='ber'"
+                src="https://firebasestorage.googleapis.com/v0/b/gokipo-d9c62.appspot.com/o/beer.png?alt=media&token=854a4868-c982-486e-87ec-58d79a25ae57"
+                style="width:100%; height:100%;"
+              />
                 {{ card.species }}
               </button>
             </div>
@@ -423,12 +429,6 @@ export default {
       //     type: 'common',
       //   }),
       // })
-      const array = [1, 2, 3, 4, 5]
-      console.log(array)
-      array.forEach(arg => {
-        arg = 0
-      })
-      console.log(array)
     },
     ...mapActions('basics', ['fetchBasics']),
     left(i) {
@@ -655,7 +655,7 @@ export default {
 $basic: #0f0e17;
 @mixin card {
   height: 70px;
-  min-width: 33px;
+  width: 33px;
   border-radius: 3px;
   border: 1px solid white;
   font-size: 15px;
