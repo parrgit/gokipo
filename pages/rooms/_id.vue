@@ -212,7 +212,7 @@
             <div v-if="phase === 'yesno'" class="my-card-zone-hand">
               <button
                 v-for="card in hand"
-                :key="card"
+                :key="card.id"
                 @click="queue(card.id)"
                 :class="[
                   'animate__animated animate__bounceIn',
@@ -577,9 +577,18 @@ export default {
     },
     accumulate() {
       const accumulate = this.$fireFunc.httpsCallable('accumulate')
-      const accumulations = [...this.accumulations] //とりあえずスプレッド、必要ない可能性あり
       const declare = this.progress.declare
       let includeYesNo = false //提出カードにyes/noが含まれていないか
+
+      const accumulations = [] //溜める用カード1~2枚
+      //accumulationIdsからaccumulationを作成
+      this.accumulationIds.forEach(accumulationId => {
+        const obj = this.hand.find(card => {
+          return card.id === accumulationId
+        })
+        accumulations.push(obj)
+      })
+
       if (!accumulations) {
         alert('溜めるカードを選択してください')
         return
