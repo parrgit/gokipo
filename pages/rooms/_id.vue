@@ -80,7 +80,7 @@
             </div>
           </div>
         </div>
-        <!-- ============= PENALTY & REAL ZONE ============== -->
+        <!-- =============================== PENALTY & REAL ZONE ============================== -->
         <div class="penalty-zone">
           <!-- penalty -->
           <div
@@ -119,26 +119,9 @@
         </div>
         <!-- ================================== MY ZONE =================================== -->
         <div class="name-zone">
-          <p
-            :class="{
-              active:
-                (me.isGiver || me.isAcceptor || me.isYesNoer) && phase !== 'waiting' && !me.isLoser,
-              canbeNominated: !me.canbeNominated,
-              ready: me.isReady && phase === 'waiting',
-              loser: me.isLoser,
-            }"
-            style="user-select:none;"
-          >
-            {{ me.name }}
-          </p>
+          <MyName :me="me" :phase="phase" />
           <!-- セリフ -->
-          <p v-show="(phase === 'accept' && me.isGiver) || (phase === 'yesno' && me.isGiver)">
-            {{ progress.declare }}!
-          </p>
-          <p v-show="phase === 'accept' && me.isAcceptor">Hmm..</p>
-          <p v-show="(phase === 'give' || phase === 'pass') && me.isGiver">Hmm..</p>
-          <p v-show="phase === 'yesno' && me.isYesNoer">Ugh..</p>
-          <p v-show="phase === 'waiting' && me.isLoser">I have gout..</p>
+          <MyQuotes :me="me" :phase="phase" :progress="progress" />
         </div>
         <div>
           <!-- 自分の厄介者ゾーン -->
@@ -164,23 +147,13 @@
             </div>
             <!-- YES/NOフェーズ用 -->
             <div v-if="phase === 'yesno'" class="my-card-zone-hand">
-              <button
+              <MyHandCardYesNo
                 v-for="card in hand"
                 :key="card.id"
-                @click="queue(card.id)"
-                :class="[
-                  'animate__animated animate__bounceIn',
-                  {
-                    king: card.type === 'king',
-                    yesno: card.type === 'yes' || card.type === 'no',
-                    selectedInHand:
-                      card.id === { ...accumulations[0] }.id ||
-                      card.id === { ...accumulations[1] }.id,
-                  },
-                ]"
-              >
-                {{ card.species }}
-              </button>
+                :card="card"
+                :accumulations="accumulations"
+                @queue="queue($event)"
+              />
             </div>
           </div>
         </div>
@@ -304,9 +277,9 @@ export default {
         return card.id === this.realId
       })
     },
-    //accumulations[{}] <= accumulationIds[]
     accumulations() {
       //提出用1,2枚
+      //TODO filter?で書き換える
       const accumulations = []
       this.accumulationIds.forEach(accumulationId => {
         const obj = this.hand.find(card => {
