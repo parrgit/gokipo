@@ -49,7 +49,7 @@
             </div>
 
             <div>
-              <!-- 手札 -->
+              <!-- 他プレイヤーの手札 -->
               <div class="others-card-zone-hand">
                 <!-- TODOkeyをidにする -->
                 <div
@@ -74,18 +74,7 @@
                   :style="{ position: 'relative' }"
                 >
                   <!-- key:string value:[] -->
-                  <div
-                    v-for="(card, i) in value"
-                    :style="{ position: 'absolute', top: burdenBottom(i) + 'px', margin: '0' }"
-                    :class="{
-                      common: card.type === 'common',
-                      king: card.type === 'king',
-                      yesno: card.type === 'yes' || card.type === 'no',
-                    }"
-                    :key="card.id"
-                  >
-                    {{ card.species }}
-                  </div>
+                  <BurdenCard v-for="(card, i) in value" :key="card.id" :card="card" :i="i" />
                 </div>
               </div>
             </div>
@@ -102,17 +91,8 @@
             }"
             :key="i"
           ></div>
-          <div
-            v-show="Object.keys(penaltyTop).length"
-            style="position:absolute;"
-            :style="{ top: -(penaltyTop.bodyNum + 1) * 3 + 'px' }"
-            :class="{
-              common: penaltyTop.type === 'common',
-              king: penaltyTop.type === 'king',
-            }"
-          >
-            {{ penaltyTop.species }}
-          </div>
+          <PenaltyTopCard v-show="Object.keys(penaltyTop).length" :penaltyTop="penaltyTop" />
+
           <!-------------- REAL -------------->
           <!-- 通常は「？」 -->
           <div
@@ -137,7 +117,7 @@
             <p>{{ secretReal.species }}</p>
           </div>
         </div>
-        <!-- ============= MY ZONE ============== -->
+        <!-- ================================== MY ZONE =================================== -->
         <div class="name-zone">
           <p
             :class="{
@@ -166,55 +146,23 @@
             <div class="my-card-zone-burden">
               <div v-for="(value, key) in me.burden" :key="key" :style="{ position: 'relative' }">
                 <!-- key:string value:[] -->
-                <div
-                  v-for="(card, i) in value"
-                  :style="{
-                    position: 'absolute',
-                    margin: '0',
-                    bottom: burdenBottom(i) + 'px',
-                  }"
-                  :class="[
-                    'animate__animated animate__bounceIn',
-                    {
-                      common: card.type === 'common',
-                      king: card.type === 'king',
-                      yesno: card.type === 'yes' || card.type === 'no',
-                    },
-                  ]"
-                  :key="card.id"
-                >
-                  {{ card.species }}
-                </div>
+                <BurdenCard v-for="(card, i) in value" :key="card.id" :card="card" :i="i" />
               </div>
             </div>
           </div>
-          <!-- ========== HAND =========== -->
-          <!-- GIVE,ACCEPT,(WAITING)用 -->
+          <!-- ------------- MY HAND ------------- -->
+          <!-- GIVE,ACCEPT,(WAITING)フェーズ用 -->
           <div>
             <div v-if="phase !== 'yesno'" class="my-card-zone-hand">
-              
-              <button
+              <MyHandCard
                 v-for="card in hand"
                 :key="card.id"
-                @click="realId = card.id"
-                :class="[
-                  'animate__animated animate__bounceIn',
-                  {
-                    selectedInHand: card.id === realId,
-                    king: card.type === 'king',
-                    yesno: card.type === 'yes' || card.type === 'no',
-                  },
-                ]"
-              >
-              <img
-                v-show="card.species==='ber'"
-                src="https://firebasestorage.googleapis.com/v0/b/gokipo-d9c62.appspot.com/o/beer.png?alt=media&token=854a4868-c982-486e-87ec-58d79a25ae57"
-                style="width:100%; height:100%;"
+                :card="card"
+                :realId="realId"
+                @select-card="realId = card.id"
               />
-                {{ card.species }}
-              </button>
             </div>
-            <!-- YES/NO用 -->
+            <!-- YES/NOフェーズ用 -->
             <div v-if="phase === 'yesno'" class="my-card-zone-hand">
               <button
                 v-for="card in hand"
@@ -655,7 +603,7 @@ export default {
 $basic: #0f0e17;
 @mixin card {
   height: 70px;
-  width: 33px;
+  width: 40px;
   border-radius: 3px;
   border: 1px solid white;
   font-size: 15px;
