@@ -17,6 +17,7 @@ exports.gameStart = functions.region('asia-northeast1').https.onCall(async roomI
   console.log('----------GAME START!----------')
   let isContinuable = true //関数継続可能かflag
   //firestore
+  const batch = fireStore.batch()
   const progressRef = fireStore.doc(`rooms/${roomId}/progress/progDoc`)
 
   const [progressSnap, playersSnap, roomSnap] = await Promise.all([
@@ -43,6 +44,18 @@ exports.gameStart = functions.region('asia-northeast1').https.onCall(async roomI
   isContinuable = isWaiting && isMatch && isAllReady //関数開始条件
   if (!isContinuable) return //開始条件を満たしていなければリターン
 
+  //全員初期化
+  playersSnap.docs.forEach(doc => {
+    batch.update(doc.ref, {
+      isReady: false,
+      isAcceptor: false,
+      isYesNor: false,
+      isGiver: false,
+      canbeNominated: true,
+      isLoser: false,
+    })
+  })
+
   //カード配布関数
   cardDistribution(playersNum, roomId, fireStore)
 
@@ -50,12 +63,11 @@ exports.gameStart = functions.region('asia-northeast1').https.onCall(async roomI
   const random = Math.floor(playerIDs.length * Math.random())
   const firstPlayerID = playerIDs.splice(random, 1)
   const firstPlayerDoc = fireStore.doc(`/rooms/${roomId}/players/${firstPlayerID}`)
-  firstPlayerDoc.update({ isGiver: true, canbeNominated: false })
+  batch.update(firstPlayerDoc, { isGiver: true, canbeNominated: false })
 
-  //phaseをgiveにセット
-  progressRef.update({
-    phase: 'give',
-  })
+  batch.update(progressRef, { phase: 'give' }) // phaseをgiveにセット
+
+  batch.commit()
 })
 
 //出し手が一名指名し、カードの中身を宣言し、提出する関数
@@ -241,11 +253,11 @@ exports.answer = functions.region('asia-northeast1').https.onCall(async (dataSet
     fireStore.doc(`rooms/${roomId}/progress/progDoc`).get(),
     fireStore.doc(`rooms/${roomId}/players/${acceptorId}`).get(),
     fireStore
-    .collection(`rooms/${roomId}/players`)
-    .where('isGiver', '==', true)
-    .get(),
+      .collection(`rooms/${roomId}/players`)
+      .where('isGiver', '==', true)
+      .get(),
   ])
-  
+
   let real = {} //実物
   real.id = realSnap.data().id
   real.type = realSnap.data().type

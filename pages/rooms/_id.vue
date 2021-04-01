@@ -13,7 +13,7 @@
         <hr />
         <!-- ========================= CARD ZONE ========================== -->
         <!-- ============= OTHER ZONE ============== -->
-        <!-- TODOクラスにする tailwindow, windyの使用もあり -->
+        <!--TODO tailwindow, windyの使用もあり -->
         <div style="display:flex;">
           <div
             v-for="player in otherPlayers"
@@ -34,18 +34,8 @@
               >
                 {{ player.name }}
               </p>
-              <!-- セリフ-->
-              <p
-                v-show="
-                  (phase === 'accept' && player.isGiver) || (phase === 'yesno' && player.isGiver)
-                "
-              >
-                {{ progress.declare }}!
-              </p>
-              <p v-show="phase === 'accept' && player.isAcceptor">Hmm..</p>
-              <p v-show="(phase === 'give' || phase === 'pass') && player.isGiver">Hmm..</p>
-              <p v-show="phase === 'yesno' && player.isYesNoer">Ugh..</p>
-              <p v-show="phase === 'waiting' && player.isLoser">I have gout..</p>
+              <!-- セリフ -->
+              <OthersQuotes :player="player" :phase="phase" :progress="progress" />
             </div>
 
             <div>
@@ -160,7 +150,7 @@
       </div>
 
       <!-- ================================ BUTTONS ================================ -->
-      <div class="buttons">
+      <div class="buttons" v-show="me">
         <!-- TODO退出関数作る -->
         <!-- <button @click="getOut">get out</button> -->
         <button v-show="phase === 'waiting'" @click="join">Join</button>
@@ -197,8 +187,6 @@
     <!-- ==================== debug tools ==================== -->
     <hr />
     <h2>for debug</h2>
-
-    <!-- <pre>{{ $data }}</pre> -->
 
     <div class="debugs">
       <button @click="displayCards">referenceを取得して表示</button>
@@ -440,6 +428,12 @@ export default {
       this.acceptorId = playerId
     },
     give() {
+      // 【バリデーション】細かいのはFunctionsでするため、事物/宣言/相手プレイヤーの選択を確認
+      const isContinuable = Boolean(this.real) && Boolean(this.declare) && Boolean(this.acceptorId)
+      if (!isContinuable) {
+        alert('提出カード・宣言・受けるプレイヤーを選択してください')
+        return
+      }
       const give = this.$fireFunc.httpsCallable('give')
       give(this.submission)
     },
@@ -578,7 +572,7 @@ $basic: #0f0e17;
   height: 70px;
   width: 40px;
   border-radius: 3px;
-  border: 1px solid white;
+  border: 1px solid lighten($basic, 75%);
   font-size: 15px;
   display: grid;
   place-items: center;
@@ -641,8 +635,8 @@ select {
 }
 .my-card-zone-hand {
   display: flex;
+  flex-wrap: wrap;
   justify-content: flex-start;
-  height: 100px;
   div,
   button {
     @include card;
@@ -693,7 +687,7 @@ select {
   }
 }
 .selectedInHand {
-  border: 2px solid lighten($basic, 40%) !important;
+  border: 2px solid hsl(90, 100%, 60%)  !important;
 }
 .king {
   background: hsl(60, 90%, 24%) !important;
@@ -702,7 +696,7 @@ select {
   background: hsl(200, 90%, 24%) !important;
 }
 .common {
-  background: $basic !important;
+  background: lighten($basic, 25%) !important;
 }
 .progress {
   width: 600px;
@@ -732,13 +726,8 @@ select {
 .ready {
   background: lightcoral;
 }
-
 .dashed {
   border: 1px dashed white !important;
   color: white;
 }
-
-// .invisible {
-//   border-style: none;
-// }
 </style>

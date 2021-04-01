@@ -16,38 +16,31 @@
   >
     <img
       v-show="card.species === 'ber'"
-      src="https://firebasestorage.googleapis.com/v0/b/gokipo-d9c62.appspot.com/o/beer.png?alt=media&token=2ff85eda-c61b-4d61-a687-50999a6bd386"
-      style="width:100%; height:100%;"
+      src="https://firebasestorage.googleapis.com/v0/b/gokipo-d9c62.appspot.com/o/beer.png?alt=media&token=b637cb71-749c-4a77-a280-040f02cb736c"
     />
     <img
       v-show="card.species === 'gzd'"
-      src="https://firebasestorage.googleapis.com/v0/b/gokipo-d9c62.appspot.com/o/gizzard.png?alt=media&token=2b7b0190-49af-414a-8df7-7705fa8510fd"
-      style="width:100%; height:100%;"
+      src="https://firebasestorage.googleapis.com/v0/b/gokipo-d9c62.appspot.com/o/gizzard.png?alt=media&token=ca3e81c1-cafd-46ed-8ffe-7533309e3ac8"
     />
     <img
       v-show="card.species === 'lvr'"
-      src="https://firebasestorage.googleapis.com/v0/b/gokipo-d9c62.appspot.com/o/lever.png?alt=media&token=6cdac074-358a-42eb-ad0b-9811abbc88e5"
-      style="width:100%; height:100%;"
+      src="https://firebasestorage.googleapis.com/v0/b/gokipo-d9c62.appspot.com/o/lever.png?alt=media&token=b90fe550-e922-4a42-a643-d8bcccec4003"
     />
     <img
       v-show="card.species === 'mon'"
-      src="https://firebasestorage.googleapis.com/v0/b/gokipo-d9c62.appspot.com/o/monkfish_liver.png?alt=media&token=10be2888-38ce-4a82-8de1-b3542bf2457e"
-      style="width:100%; height:100%;"
+      src="https://firebasestorage.googleapis.com/v0/b/gokipo-d9c62.appspot.com/o/monkfish_liver.png?alt=media&token=3777f460-9cb0-4886-a7f7-999f72975887"
     />
     <img
       v-show="card.species === 'nbs'"
-      src="https://firebasestorage.googleapis.com/v0/b/gokipo-d9c62.appspot.com/o/niboshi.png?alt=media&token=9b095df0-19c0-4b48-a230-3dfa42ced184"
-      style="width:100%; height:100%;"
+      src="https://firebasestorage.googleapis.com/v0/b/gokipo-d9c62.appspot.com/o/niboshi.png?alt=media&token=b1c1082e-f3a6-46bf-ad99-98780fb8ff94"
     />
     <img
       v-show="card.species === 'sal'"
-      src="https://firebasestorage.googleapis.com/v0/b/gokipo-d9c62.appspot.com/o/salmon_roe.png?alt=media&token=68329903-8194-4d17-b265-8f14540ed2b8"
-      style="width:100%; height:100%;"
+      src="https://firebasestorage.googleapis.com/v0/b/gokipo-d9c62.appspot.com/o/salmon_roe.png?alt=media&token=8e5abc27-711e-4603-9bd7-f7744777f098"
     />
     <img
       v-show="card.species === 'srp'"
-      src="https://firebasestorage.googleapis.com/v0/b/gokipo-d9c62.appspot.com/o/shrimp.png?alt=media&token=88568de9-9ff0-428a-a0ae-bdeb19978d18"
-      style="width:100%; height:100%;"
+      src="https://firebasestorage.googleapis.com/v0/b/gokipo-d9c62.appspot.com/o/shrimp.png?alt=media&token=b790f8f1-c079-461f-bb00-6215a6a43f56"
     />
     <p v-show="card.type === 'yes' || card.type === 'no'">
       {{ card.species }}
@@ -65,3 +58,10 @@ export default {
   },
 }
 </script>
+
+<style lang="scss">
+img {
+  height: 80% !important;
+  width: 80%;
+}
+</style>
