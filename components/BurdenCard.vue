@@ -42,9 +42,14 @@
       v-show="card.species === 'srp'"
       src="https://firebasestorage.googleapis.com/v0/b/gokipo-d9c62.appspot.com/o/shrimp.png?alt=media&token=b790f8f1-c079-461f-bb00-6215a6a43f56"
     />
-    <p v-show="card.type === 'yes' || card.type === 'no'">
-      {{ card.species }}
-    </p>
+    <img
+      v-show="card.type === 'yes'"
+      src="https://firebasestorage.googleapis.com/v0/b/gokipo-d9c62.appspot.com/o/yes.png?alt=media&token=fc4655c6-f791-4f5f-b68b-880bc13704ab"
+    />
+    <img
+      v-show="card.type === 'no'"
+      src="https://firebasestorage.googleapis.com/v0/b/gokipo-d9c62.appspot.com/o/no.png?alt=media&token=35fbd5b3-0bf5-44a5-a664-7af170c1380a"
+    />
   </div>
 </template>
 
@@ -58,10 +63,3 @@ export default {
   },
 }
 </script>
-
-<style lang="scss">
-img {
-  height: 80% !important;
-  width: 80%;
-}
-</style>

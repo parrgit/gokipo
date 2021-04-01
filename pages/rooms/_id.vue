@@ -3,7 +3,6 @@
     <div class="container">
       <p style="margin:0;">{{ roomName }}</p>
       <!-- ========================= TABLE ========================== -->
-      <!-- ========================= TABLE ========================== -->
       <div class="table-container">
         <div class="progress">
           <p>phase: {{ phase }}</p>
@@ -11,7 +10,6 @@
           <p v-show="phase === 'yesno'">accumulator: {{ accumulatorName }}</p>
         </div>
         <hr />
-        <!-- ========================= CARD ZONE ========================== -->
         <!-- ============= OTHER ZONE ============== -->
         <!--TODO tailwindow, windyの使用もあり -->
         <div style="display:flex;">
@@ -41,7 +39,6 @@
             <div>
               <!-- 他プレイヤーの手札 -->
               <div class="others-card-zone-hand">
-                <!-- TODOkeyをidにする -->
                 <div
                   v-for="i in player.handNum"
                   :key="i"
@@ -118,7 +115,6 @@
           <div>
             <div class="my-card-zone-burden">
               <div v-for="(value, key) in me.burden" :key="key" :style="{ position: 'relative' }">
-                <!-- key:string value:[] -->
                 <BurdenCard v-for="(card, i) in value" :key="card.id" :card="card" :i="i" />
               </div>
             </div>
@@ -150,7 +146,7 @@
       </div>
 
       <!-- ================================ BUTTONS ================================ -->
-      <div class="buttons" v-show="me">
+      <div class="buttons" v-show="Object.keys(me).length">
         <!-- TODO退出関数作る -->
         <!-- <button @click="getOut">get out</button> -->
         <button v-show="phase === 'waiting'" @click="join">Join</button>
@@ -687,16 +683,16 @@ select {
   }
 }
 .selectedInHand {
-  border: 2px solid hsl(90, 100%, 60%)  !important;
+  border: 2px solid hsl(90, 100%, 60%) !important;
 }
 .king {
-  background: hsl(60, 90%, 24%) !important;
+  background: hsl(60, 90%, 28%) !important;
 }
 .yesno {
   background: hsl(200, 90%, 24%) !important;
 }
 .common {
-  background: lighten($basic, 25%) !important;
+  background: lighten($basic, 28%) !important;
 }
 .progress {
   width: 600px;
@@ -729,5 +725,9 @@ select {
 .dashed {
   border: 1px dashed white !important;
   color: white;
+}
+::v-deep img {
+  height: 80%;
+  width: 90%;
 }
 </style>
