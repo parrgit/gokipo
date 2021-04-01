@@ -16,9 +16,10 @@
     "express": "^4.17.1",
     "firebase": "^8.2.2",
     "nuxt": "^2.14.6",
-    "vue-select": "^3.11.2"
+    "vue-final-modal": "^2.1.0"
   },
   "devDependencies": {
+    "@nuxtjs/tailwindcss": "^4.0.2",
     "@vue/test-utils": "^1.1.0",
     "babel-core": "7.0.0-bridge.0",
     "babel-jest": "^26.5.0",

@@ -1,7 +1,10 @@
 <template>
   <div class="body">
     <div class="container">
-      <p style="margin:0;">{{ roomName }}</p>
+      <p style="margin:0;">room: {{ roomName }}</p>
+
+      <!-- ========================= MODAL ========================== -->
+      
       <!-- ========================= TABLE ========================== -->
       <div class="table-container">
         <div class="progress">
@@ -82,32 +85,14 @@
 
           <!-------------- REAL -------------->
           <!-- 通常は「？」 -->
-          <div
-            v-show="(phase === 'accept' || phase === 'pass') && !(phase === 'pass' && me.isGiver)"
-            style="position:absolute; left:-80px;bottom:20px;"
-            :class="['animate__animated animate__fadeInLeft']"
-          >
-            <p>?</p>
-          </div>
+          <InvisibleReal :phase="phase" :me="me" />
           <!-- 可視化状態 -->
-          <div
-            v-show="phase === 'pass' && me.isGiver"
-            style="position:absolute; left:-80px; bottom:20px;"
-            :class="[
-              'dashed animate__animated animate__fadeIn animate__repeat-2',
-              {
-                king: secretReal.type === 'king',
-                yesno: secretReal.type === 'yes' || secretReal.type === 'no',
-              },
-            ]"
-          >
-            <p>{{ secretReal.species }}</p>
-          </div>
+          <SecretReal :phase="phase" :me="me" :secretReal="secretReal" />
         </div>
         <!-- ================================== MY ZONE =================================== -->
         <div class="name-zone">
           <MyName :me="me" :phase="phase" />
-          <!-- セリフ -->
+          <!-- セリフ達 -->
           <MyQuotes :me="me" :phase="phase" :progress="progress" />
         </div>
         <div>
@@ -146,7 +131,7 @@
       </div>
 
       <!-- ================================ BUTTONS ================================ -->
-      <div class="buttons" v-show="Object.keys(me).length">
+      <div class="buttons">
         <!-- TODO退出関数作る -->
         <!-- <button @click="getOut">get out</button> -->
         <button v-show="phase === 'waiting'" @click="join">Join</button>
@@ -167,7 +152,9 @@
         <button v-show="phase === 'give' && me.isGiver && !noHand" @click="give">
           Give
         </button>
-        <button v-show="phase === 'give' && noHand" @click="surrender">Surrender</button>
+        <button v-show="phase === 'give' && noHand && Object.keys(me).length" @click="surrender">
+          Surrender
+        </button>
         <button v-show="phase === 'pass' && me.isGiver" @click="giveOfPass">
           Give
         </button>
@@ -323,19 +310,13 @@ export default {
     await this.fetchBasics({ roomId: this.roomId, uid: user.uid })
   },
   methods: {
-    test() {
-      // const myRef = this.$firestore.doc(`/rooms/${this.roomId}/players/${this.uid}`)
-      // // myRef.update({ burden: admin.firestore.FieldValue.arrayRemove({ id: 'id0100010id' }) })
-      //firestoreのarrayから特定の要素を削除する方法
-      // myRef.update({
-      //   burden: this.$firebase.firestore.FieldValue.arrayRemove({
-      //     id: 'id0100010id',
-      //     species: 'frg',
-      //     type: 'common',
-      //   }),
-      // })
-    },
     ...mapActions('basics', ['fetchBasics']),
+    test() {
+      this.$modal.show('my-first-modal')
+    },
+    hide() {
+      this.$modal.hide('my-first-modal')
+    },
     left(i) {
       return i * 44
     },
@@ -636,6 +617,7 @@ select {
   div,
   button {
     @include card;
+    margin-top: 7px;
   }
 }
 .my-card-zone-burden {

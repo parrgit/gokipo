@@ -22,19 +22,13 @@ export default {
   css: ['@/assets/style.scss', 'animate.css/animate.min.css'],
 
   // Plugins to run before rendering page (https://go.nuxtjs.dev/config-plugins)
-  plugins: [
-    '~/plugins/firebase',
-    '~/plugins/auth',
-    '~/plugins/vueselect',
-    '~/plugins/async',
-    '~/plugins/user',
-  ],
+  plugins: ['~/plugins/firebase', '~/plugins/auth', '~/plugins/async', '~/plugins/user'],
 
   // Auto import components (https://go.nuxtjs.dev/config-components)
   components: true,
 
   // Modules for dev and build (recommended) (https://go.nuxtjs.dev/config-modules)
-  buildModules: [],
+  buildModules: ['@nuxtjs/tailwindcss'],
 
   // Modules (https://go.nuxtjs.dev/config-modules)
   modules: [],
