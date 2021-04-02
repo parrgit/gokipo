@@ -155,9 +155,10 @@ exports.giveOfPass = functions
 
     // firestoreRefs
     const batch = fireStore.batch()
-    const progressDoc = fireStore.doc(`rooms/${roomId}/progress/progDoc`)
-    const acceptorDoc = fireStore.doc(`rooms/${roomId}/players/${acceptorId}`)
-    const authenticityDoc = fireStore.doc(`rooms/${roomId}/authenticity/authenDoc`)
+    const progressRef = fireStore.doc(`rooms/${roomId}/progress/progDoc`)
+    const acceptorRef = fireStore.doc(`rooms/${roomId}/players/${acceptorId}`)
+    const authenticityRef = fireStore.doc(`rooms/${roomId}/authenticity/authenDoc`)
+    const invPlayerRef = fireStore.doc(`rooms/${roomId}/invPlayers/${context.auth.uid}`) // secretReal削除用
 
     const [realDocSnap, progressDocSnap, giverDocSnap, acceptorDocSnap] = await Promise.all([
       fireStore.doc(`rooms/${roomId}/real/realDoc`).get(),
@@ -180,9 +181,10 @@ exports.giveOfPass = functions
     const real = realDocSnap.data() //実物をフェッチ
     const authenticity = getAuthenticity(declare, real) //実物・宣言から真偽を算出
 
-    batch.set(authenticityDoc, { authenticity: authenticity })
-    batch.update(acceptorDoc, { isAcceptor: true, canbeNominated: false })
-    batch.update(progressDoc, { declare: declare, phase: 'accept' })
+    batch.set(authenticityRef, { authenticity: authenticity })
+    batch.update(acceptorRef, { isAcceptor: true, canbeNominated: false })
+    batch.update(progressRef, { declare: declare, phase: 'accept' })
+    batch.set(invPlayerRef, {})
 
     await batch.commit()
   })

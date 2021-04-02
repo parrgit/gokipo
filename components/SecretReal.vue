@@ -53,5 +53,7 @@
 <script>
 export default {
   props: ['phase', 'me', 'secretReal'],
+  created() {
+  },
 }
 </script>

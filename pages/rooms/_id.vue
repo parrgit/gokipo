@@ -4,7 +4,10 @@
       <p style="margin:0;">room: {{ roomName }}</p>
 
       <!-- ========================= MODAL ========================== -->
-      
+      <vue-final-modal v-model="showModal" classes="flex justify-center items-center">
+        <div class="p-4 bg-black rounded text-2xl">Hello, world!</div>
+      </vue-final-modal>
+
       <!-- ========================= TABLE ========================== -->
       <div class="table-container">
         <div class="progress">
@@ -58,12 +61,7 @@
             <!-- 他プレイヤーの厄介ゾーン -->
             <div>
               <div class="others-card-zone-burden">
-                <div
-                  v-for="(value, key) in player.burden"
-                  :key="key"
-                  :style="{ position: 'relative' }"
-                >
-                  <!-- key:string value:[] -->
+                <div v-for="(value, key) in player.burden" :key="key" style="position:relative;">
                   <BurdenCard v-for="(card, i) in value" :key="card.id" :card="card" :i="i" />
                 </div>
               </div>
@@ -137,7 +135,7 @@
         <button v-show="phase === 'waiting'" @click="join">Join</button>
         <button v-show="phase === 'waiting'" @click="ready">Ready</button>
         <select
-          v-show="((phase === 'give' && me.isGiver) || (phase === 'pass' && me.isGiver)) && !noHand"
+          v-show="((phase === 'give' && me.isGiver) || (phase === 'pass' && me.isGiver)) && isHand"
           v-model="declare"
         >
           <option value="" disabled selected>select a declare</option>
@@ -149,10 +147,10 @@
             <p>{{ declareElement }}</p>
           </option>
         </select>
-        <button v-show="phase === 'give' && me.isGiver && !noHand" @click="give">
+        <button v-show="phase === 'give' && me.isGiver && isHand" @click="give">
           Give
         </button>
-        <button v-show="phase === 'give' && noHand && Object.keys(me).length" @click="surrender">
+        <button v-show="phase === 'give' && !isHand && Object.keys(me).length" @click="surrender">
           Surrender
         </button>
         <button v-show="phase === 'pass' && me.isGiver" @click="giveOfPass">
@@ -172,9 +170,6 @@
     <h2>for debug</h2>
 
     <div class="debugs">
-      <button @click="displayCards">referenceを取得して表示</button>
-      <button @click="waiting">phaseをwaitingに</button>
-      <button @click="console">マイカード全部削除用(2021/3/2)</button>
       <button @click="initializeRoom">ルーム初期化用(2021/3/4)</button>
       <button @click="test">test</button>
     </div>
@@ -204,6 +199,7 @@
 
 <script>
 import { mapActions, mapGetters } from 'vuex'
+
 export default {
   middleware: ['checkAuth'],
   data() {
@@ -215,8 +211,15 @@ export default {
       declareElements: ['ber', 'gzd', 'lvr', 'mon', 'nbs', 'sal', 'srp', 'king'],
       speciesElements: ['ber', 'gzd', 'lvr', 'mon', 'nbs', 'sal', 'srp'],
       animateActive: false,
+      showModal: false,
     }
   },
+
+  async created() {
+    const user = await this.$auth()
+    await this.fetchBasics({ roomId: this.roomId, uid: user.uid })
+  },
+
   computed: {
     ...mapGetters('user', ['uname', 'uid']),
     ...mapGetters('basics', [
@@ -228,8 +231,8 @@ export default {
       'penaltyTop',
       'secretReal',
     ]),
-    noHand() {
-      return this.hand.length === 0
+    isHand() {
+      return this.hand.length !== 0 //手札あり
     },
     roomId() {
       return this.$route.params.id
@@ -283,7 +286,6 @@ export default {
         phase: this.progress.phase,
       }
     },
-
     giverName() {
       const giver = this.players.find(player => player.isGiver)
       return { ...giver }.name
@@ -298,24 +300,18 @@ export default {
     },
     canPass() {
       let canPass = false
-      //TODOforEachじゃなくてもかけるはず
+      //TODOforEachじゃなくてもかけるかな
       this.players.forEach(player => {
         canPass = canPass || player.canbeNominated
       })
       return canPass
     },
   },
-  async created() {
-    const user = await this.$auth()
-    await this.fetchBasics({ roomId: this.roomId, uid: user.uid })
-  },
+
   methods: {
     ...mapActions('basics', ['fetchBasics']),
     test() {
-      this.$modal.show('my-first-modal')
-    },
-    hide() {
-      this.$modal.hide('my-first-modal')
+      this.showModal = !this.showModal
     },
     left(i) {
       return i * 44
@@ -327,7 +323,7 @@ export default {
       return i * 10
     },
     deg(i) {
-      return -40 + 4 * i
+      return -40 + 2.4 * i
     },
     top(i) {
       return Math.pow(this.deg(i) * 0.1, 2)
@@ -374,31 +370,9 @@ export default {
       const gameStart = this.$fireFunc.httpsCallable('gameStart')
       gameStart(this.roomId)
     },
-    // コンソールでreferenceをみる用
-    displayCards() {
-      let stack = []
-      const reference = this.$firestore.collection('/reference')
-      reference
-        .orderBy('species')
-        .get()
-        .then(col => {
-          col.forEach(doc => {
-            stack.push({ id: doc.id, type: doc.data().type, species: doc.data().species })
-          })
-          console.table(stack)
-        })
-        .catch(error => {
-          console.log('error getting documents: ', error)
-        })
-    },
     surrender() {
       const surrender = this.$fireFunc.httpsCallable('surrender')
       surrender(this.roomId)
-    },
-    // phaseをwaitingに戻す
-    waiting() {
-      const progress = this.$firestore.doc(`/rooms/${this.roomId}/progress/progDoc`)
-      progress.update({ phase: 'waiting' })
     },
     // プレイヤー選択
     selectAcceptor(playerId) {
@@ -406,23 +380,25 @@ export default {
     },
     give() {
       // 【バリデーション】細かいのはFunctionsでするため、事物/宣言/相手プレイヤーの選択を確認
-      const isContinuable = Boolean(this.real) && Boolean(this.declare) && Boolean(this.acceptorId)
+      const acceptor = this.players.find(player => player.id === this.acceptorId)
+      const isContinuable = this.real && this.declare && this.acceptorId && acceptor.canbeNominated
       if (!isContinuable) {
-        alert('提出カード・宣言・受けるプレイヤーを選択してください')
+        alert('提出カード・宣言・受け手プレイヤーを確認してください')
         return
       }
       const give = this.$fireFunc.httpsCallable('give')
       give(this.submission)
     },
-    console() {
-      const handCol = this.$firestore.collection(
-        `/rooms/${this.roomId}/invPlayers/${this.uid}/hand`
-      )
-      handCol.get().then(col => {
-        col.forEach(doc => {
-          doc.ref.delete()
-        })
-      })
+    async giveOfPass() {
+      // 【バリデーション】細かいのはFunctionsでするため、事物/宣言/相手プレイヤーの選択を確認
+      const acceptor = this.players.find(player => player.id === this.acceptorId)
+      const isContinuable = this.declare && this.acceptorId && acceptor.canbeNominated
+      if (!isContinuable) {
+        alert('宣言、受け手を選択してください')
+        return
+      }
+      const giveOfPass = this.$fireFunc.httpsCallable('giveOfPass')
+      await giveOfPass(this.submissionOfPass)
     },
     initializeRoom() {
       const roomData = {
@@ -456,17 +432,7 @@ export default {
       const pass = this.$fireFunc.httpsCallable('pass')
       pass(this.roomId)
     },
-    async giveOfPass() {
-      const invPlayersDoc = this.$firestore.doc(`rooms/${this.roomId}/invPlayers/${this.uid}`)
-      const giveOfPass = this.$fireFunc.httpsCallable('giveOfPass')
-      if (!this.declare || !this.acceptorId) {
-        alert('宣言、受け手を選択してください')
-        return
-      }
-      await giveOfPass(this.submissionOfPass)
-      //secretRealの削除＠firestore
-      invPlayersDoc.set({})
-    },
+
     accumulate() {
       const accumulate = this.$fireFunc.httpsCallable('accumulate')
       const declare = this.progress.declare
