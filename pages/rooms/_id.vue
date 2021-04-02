@@ -1,13 +1,6 @@
 <template>
   <div class="body">
     <div class="container">
-      <p style="margin:0;">room: {{ roomName }}</p>
-
-      <!-- ========================= MODAL ========================== -->
-      <vue-final-modal v-model="showModal" classes="flex justify-center items-center">
-        <div class="p-4 bg-black rounded text-2xl">Hello, world!</div>
-      </vue-final-modal>
-
       <!-- ========================= TABLE ========================== -->
       <div class="table-container">
         <div class="progress">
@@ -222,15 +215,7 @@ export default {
 
   computed: {
     ...mapGetters('user', ['uname', 'uid']),
-    ...mapGetters('basics', [
-      'roomName',
-      'phase',
-      'players',
-      'hand',
-      'progress',
-      'penaltyTop',
-      'secretReal',
-    ]),
+    ...mapGetters('basics', ['phase', 'players', 'hand', 'progress', 'penaltyTop', 'secretReal']),
     isHand() {
       return this.hand.length !== 0 //手札あり
     },

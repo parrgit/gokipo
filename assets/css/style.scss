@@ -1,3 +1,5 @@
+$basic: #0f0e17;
+
 * {
   box-sizing: border-box;
   font-family: 'Courier New', Courier, monospace;
@@ -5,7 +7,7 @@
 }
 
 body {
-  background: #0f0e17;
+  background: $basic;
   color: #fffffe;
 }
 
@@ -26,7 +28,7 @@ button {
   margin: 10px auto;
   padding: 10px 10px;
   border-radius: 3px;
-  background: #0f0e17;
+  background: $basic;
   color: #fffffe;
   border: 1px solid #fffffe;
   cursor: pointer;

@@ -19,7 +19,7 @@ export default {
   },
 
   // Global CSS (https://go.nuxtjs.dev/config-css)
-  css: ['@/assets/style.scss', 'animate.css/animate.min.css'],
+  css: ['@/assets/css/style.scss', 'animate.css/animate.min.css'],
 
   // Plugins to run before rendering page (https://go.nuxtjs.dev/config-plugins)
   plugins: [
@@ -34,10 +34,16 @@ export default {
   components: true,
 
   // Modules for dev and build (recommended) (https://go.nuxtjs.dev/config-modules)
-  buildModules: ['@nuxtjs/tailwindcss'],
+  buildModules: [],
 
   // Modules (https://go.nuxtjs.dev/config-modules)
-  modules: [],
+  modules: ['@nuxtjs/markdownit'],
+
+  markdownit: {
+    preset: 'default', //markdownを使用
+    injected: true, //$mdでhtmlにパース
+    breaks: true, //改行を<br>に変換
+  },
 
   // Build Configuration (https://go.nuxtjs.dev/config-build)
   build: {
