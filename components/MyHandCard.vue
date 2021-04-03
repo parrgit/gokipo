@@ -11,8 +11,8 @@
       },
     ]"
   >
-    <!-- TODO:srcでソースを切り替える、mixin? 、オブジェクトで回す-->
-    <!-- TODO画像はちょくで入れ込むのでおｋ assets→最適化あり -->
+    <!-- :srcでソースを切り替えるのもあり、mixin? 、オブジェクトで回す?-->
+    <!-- 画像は直で入れ込むのでもおｋ assets→最適化あり -->
     <img
       v-show="card.species === 'ber'"
       src="https://firebasestorage.googleapis.com/v0/b/gokipo-d9c62.appspot.com/o/beer.png?alt=media&token=b637cb71-749c-4a77-a280-040f02cb736c"
@@ -57,4 +57,3 @@ export default {
   props: ['card', 'realId'],
 }
 </script>
-

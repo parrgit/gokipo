@@ -1,7 +1,7 @@
 <template>
   <!-- 可視化状態 -->
   <div
-    v-show="phase === 'pass' && me.isGiver"
+    v-show="(phase === 'pass' && me.isGiver) || phase === 'yesno'"
     style="position:absolute; left:-80px; bottom:20px;"
     :class="[
       'dashed animate__animated animate__fadeIn animate__repeat-2',
@@ -53,7 +53,6 @@
 <script>
 export default {
   props: ['phase', 'me', 'secretReal'],
-  created() {
-  },
+  created() {},
 }
 </script>

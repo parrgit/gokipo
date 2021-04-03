@@ -53,6 +53,7 @@ exports.gameStart = functions.region('asia-northeast1').https.onCall(async roomI
       isGiver: false,
       canbeNominated: true,
       isLoser: false,
+      burden: [],
     })
   })
 
@@ -184,7 +185,7 @@ exports.giveOfPass = functions
     batch.set(authenticityRef, { authenticity: authenticity })
     batch.update(acceptorRef, { isAcceptor: true, canbeNominated: false })
     batch.update(progressRef, { declare: declare, phase: 'accept' })
-    batch.set(invPlayerRef, {})
+    batch.set(invPlayerRef, {}) //secretReal削除
 
     await batch.commit()
   })

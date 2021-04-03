@@ -298,9 +298,7 @@ export default {
 
   methods: {
     ...mapActions('basics', ['fetchBasics']),
-    test() {
-      this.showModal = !this.showModal
-    },
+    test() {},
     left(i) {
       return i * 44
     },
@@ -435,7 +433,7 @@ export default {
         accumulations.push(obj)
       })
 
-      if (!accumulations) {
+      if (!accumulations.length) {
         alert('溜めるカードを選択してください')
         return
       }
@@ -447,6 +445,9 @@ export default {
         alert('宣言と同じカードであれば1枚、同じでなければ2枚出してください')
         return
       }
+      //todoここでエラー発生 typeが無いとのこと 選択しても選択してなくてもでる
+      //todo 1枚選択時、2枚目がundefined、何も選択してない時1枚目のみundefined
+      console.log(accumulations) //todokesu
       accumulations.forEach(accumulation => {
         const flag = accumulation.type === 'yes' || accumulation.type === 'no'
         includeYesNo = includeYesNo || flag

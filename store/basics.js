@@ -130,8 +130,7 @@ export const actions = {
 
     //secretRealをフェッチ
     invPlayerDoc.onSnapshot(doc => {
-      // const isSecretReal = Object.keys(doc.data().secretReal).length // 存在しない時{}が来る
-      if (!doc.data().secret) {
+      if (!doc.data().secretReal) {
         return
       }
       const secretReal = doc.data().secretReal
