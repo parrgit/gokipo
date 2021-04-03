@@ -10,7 +10,7 @@
         </div>
         <hr />
         <!-- ============= OTHER ZONE ============== -->
-        <!--TODO tailwindow, windyの使用もあり -->
+        <!--TODO tailwindcss, windicssの使用もあり -->
         <div style="display:flex;">
           <div
             v-for="player in otherPlayers"
@@ -20,6 +20,7 @@
             @click="selectAcceptor(player.id)"
           >
             <div class="name-zone">
+              <!-- コンポーネント？ -->
               <p
                 :class="{
                   acceptor: acceptorId === { ...player }.id,
@@ -32,6 +33,7 @@
                 {{ player.name }}
               </p>
               <!-- セリフ -->
+              <!-- TODOケバブ -->
               <OthersQuotes :player="player" :phase="phase" :progress="progress" />
             </div>
 
@@ -62,6 +64,7 @@
           </div>
         </div>
         <!-- =============================== PENALTY & REAL ZONE ============================== -->
+        <!-- TODO<rooms-penalty-zone/> -->
         <div class="penalty-zone">
           <!-- penalty -->
           <div

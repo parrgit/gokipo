@@ -10,6 +10,8 @@
     "test": "jest"
   },
   "dependencies": {
+    "@fortawesome/free-brands-svg-icons": "^5.15.3",
+    "@fortawesome/free-solid-svg-icons": "^5.15.3",
     "@nuxtjs/markdownit": "^2.0.0",
     "animate.css": "^4.1.1",
     "array-foreach-async": "^1.0.1",
@@ -17,6 +19,7 @@
     "express": "^4.17.1",
     "firebase": "^8.2.2",
     "nuxt": "^2.15.3",
+    "nuxt-fontawesome": "^0.4.0",
     "vue-final-modal": "^2.1.0"
   },
   "devDependencies": {

@@ -37,12 +37,25 @@ export default {
   buildModules: [],
 
   // Modules (https://go.nuxtjs.dev/config-modules)
-  modules: ['@nuxtjs/markdownit'],
+  modules: ['@nuxtjs/markdownit', 'nuxt-fontawesome'],
 
   markdownit: {
     preset: 'default', //markdownを使用
     injected: true, //$mdでhtmlにパース
     breaks: true, //改行を<br>に変換
+  },
+
+  fontawesome: {
+    imports: [
+      {
+        set: '@fortawesome/free-brands-svg-icons',
+        icons: ['faTwitter'],
+      },
+      {
+        set: '@fortawesome/free-solid-svg-icons',
+        icons: ['fas'],
+      },
+    ],
   },
 
   // Build Configuration (https://go.nuxtjs.dev/config-build)
