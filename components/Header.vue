@@ -11,9 +11,9 @@
     <div class="right-block">
       <p v-if="uname">name: {{ uname }}</p>
       <!-- ログインしていない時に気づかせる -->
-      <button style="line-height:50px;" @click="login" v-if="!uname">login</button>
-      <button style="line-height:20px;" @click="logout" v-if="uname">logout</button>
-      <button v-show="isRoomPage" @click="showModal = !showModal">description</button>
+      <button style="line-height:50px;" @click="login" v-if="!uname">Login</button>
+      <button style="line-height:20px;" @click="logout" v-if="uname">Logout</button>
+      <button v-show="isRoomPage" @click="showModal = !showModal">Description</button>
     </div>
 
     <!-- ======================= 説明modal ======================= -->
@@ -22,7 +22,7 @@
         <font-awesome-icon :icon="['fas', 'window-close']" />
       </button>
 
-      <span class="modal__title">ルール説明</span>
+      <span class="modal__title">Description</span>
       <div class="modal__content">
         <div class="md-styles" v-html="mdFile"></div>
       </div>
@@ -102,7 +102,6 @@ header {
   justify-content: center;
   align-items: center;
   margin: auto;
-  width: 1000px;
   //✗ボタン
   button {
     font-size: 30px;
@@ -112,6 +111,15 @@ header {
   }
 }
 ::v-deep .modal-content {
+  p,
+  li,
+  span {
+    font-family: sans-serif;
+  }
+  span {
+    color: hsl(70, 60%, 47%);
+  }
+  width: 800px;
   position: relative;
   display: flex;
   flex-direction: column;

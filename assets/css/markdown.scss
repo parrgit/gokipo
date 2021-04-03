@@ -1,6 +1,13 @@
 $basic: #0f0e17;
+$light: #fffffe;
 
 // マークダウンの
+.md-styles {
+  font-size: 14px;
+}
+.md-styles ::v-deep p {
+  margin: 5px 0 0;
+}
 .md-styles ::v-deep h1 {
   font-weight: bold;
   font-size: 2rem;
@@ -26,8 +33,7 @@ $basic: #0f0e17;
 }
 .md-styles ::v-deep blockquote {
   font-size: 14px;
-  border-left: 4px solid black;
+  border-left: 4px solid $light;
   padding-left: 8px;
-  background: #ddd;
-  margin-top: 20px;
+  background: #555;
 }
