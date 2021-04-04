@@ -17,6 +17,7 @@ exports.gameStart = functions.region('asia-northeast1').https.onCall(async roomI
   console.log('----------GAME START!----------')
   let isContinuable = true //関数継続可能かflag
   //firestore
+  const batch = fireStore.batch()
   const progressRef = fireStore.doc(`rooms/${roomId}/progress/progDoc`)
 
   const [progressSnap, playersSnap, roomSnap] = await Promise.all([
@@ -43,6 +44,19 @@ exports.gameStart = functions.region('asia-northeast1').https.onCall(async roomI
   isContinuable = isWaiting && isMatch && isAllReady //関数開始条件
   if (!isContinuable) return //開始条件を満たしていなければリターン
 
+  //全員初期化
+  playersSnap.docs.forEach(doc => {
+    batch.update(doc.ref, {
+      isReady: false,
+      isAcceptor: false,
+      isYesNor: false,
+      isGiver: false,
+      canbeNominated: true,
+      isLoser: false,
+      burden: [],
+    })
+  })
+
   //カード配布関数
   cardDistribution(playersNum, roomId, fireStore)
 
@@ -50,12 +64,11 @@ exports.gameStart = functions.region('asia-northeast1').https.onCall(async roomI
   const random = Math.floor(playerIDs.length * Math.random())
   const firstPlayerID = playerIDs.splice(random, 1)
   const firstPlayerDoc = fireStore.doc(`/rooms/${roomId}/players/${firstPlayerID}`)
-  firstPlayerDoc.update({ isGiver: true, canbeNominated: false })
+  batch.update(firstPlayerDoc, { isGiver: true, canbeNominated: false })
 
-  //phaseをgiveにセット
-  progressRef.update({
-    phase: 'give',
-  })
+  batch.update(progressRef, { phase: 'give' }) // phaseをgiveにセット
+
+  batch.commit()
 })
 
 //出し手が一名指名し、カードの中身を宣言し、提出する関数
@@ -143,9 +156,10 @@ exports.giveOfPass = functions
 
     // firestoreRefs
     const batch = fireStore.batch()
-    const progressDoc = fireStore.doc(`rooms/${roomId}/progress/progDoc`)
-    const acceptorDoc = fireStore.doc(`rooms/${roomId}/players/${acceptorId}`)
-    const authenticityDoc = fireStore.doc(`rooms/${roomId}/authenticity/authenDoc`)
+    const progressRef = fireStore.doc(`rooms/${roomId}/progress/progDoc`)
+    const acceptorRef = fireStore.doc(`rooms/${roomId}/players/${acceptorId}`)
+    const authenticityRef = fireStore.doc(`rooms/${roomId}/authenticity/authenDoc`)
+    const invPlayerRef = fireStore.doc(`rooms/${roomId}/invPlayers/${context.auth.uid}`) // secretReal削除用
 
     const [realDocSnap, progressDocSnap, giverDocSnap, acceptorDocSnap] = await Promise.all([
       fireStore.doc(`rooms/${roomId}/real/realDoc`).get(),
@@ -168,9 +182,10 @@ exports.giveOfPass = functions
     const real = realDocSnap.data() //実物をフェッチ
     const authenticity = getAuthenticity(declare, real) //実物・宣言から真偽を算出
 
-    batch.set(authenticityDoc, { authenticity: authenticity })
-    batch.update(acceptorDoc, { isAcceptor: true, canbeNominated: false })
-    batch.update(progressDoc, { declare: declare, phase: 'accept' })
+    batch.set(authenticityRef, { authenticity: authenticity })
+    batch.update(acceptorRef, { isAcceptor: true, canbeNominated: false })
+    batch.update(progressRef, { declare: declare, phase: 'accept' })
+    batch.set(invPlayerRef, {}) //secretReal削除
 
     await batch.commit()
   })
@@ -241,11 +256,11 @@ exports.answer = functions.region('asia-northeast1').https.onCall(async (dataSet
     fireStore.doc(`rooms/${roomId}/progress/progDoc`).get(),
     fireStore.doc(`rooms/${roomId}/players/${acceptorId}`).get(),
     fireStore
-    .collection(`rooms/${roomId}/players`)
-    .where('isGiver', '==', true)
-    .get(),
+      .collection(`rooms/${roomId}/players`)
+      .where('isGiver', '==', true)
+      .get(),
   ])
-  
+
   let real = {} //実物
   real.id = realSnap.data().id
   real.type = realSnap.data().type

@@ -14,6 +14,7 @@ exports.answerSub = async (roomId, outReal, declare, loserId, loser, giverId, fi
   let isPenaltyTop //penaltyProcessに入るか判定用
   let real = outReal
   let loserBurden //judge用
+  let secretReal //yes/no可視化用
   const realArray = []
 
   //firestore
@@ -27,6 +28,7 @@ exports.answerSub = async (roomId, outReal, declare, loserId, loser, giverId, fi
   const loserHandSnapshot = fireStore.collection(`rooms/${roomId}/invPlayers/${loserId}/hand`).get()
   const penaltyTopDocSnapshot = fireStore.doc(`/rooms/${roomId}/penaltyTop/penaDoc`).get()
   const loserDocSnapshot = fireStore.doc(`rooms/${roomId}/players/${loserId}`).get()
+  const realDocSnapshot = fireStore.doc(`rooms/${roomId}/real/realDoc`).get()
 
   //getは最初にまとめてしておく、transactionを使用せずbatch処理をしたいという思惑
   await Promise.all([
@@ -35,6 +37,7 @@ exports.answerSub = async (roomId, outReal, declare, loserId, loser, giverId, fi
     progressDocSnapshot,
     penaltyTopDocSnapshot,
     loserDocSnapshot,
+    realDocSnapshot,
   ]).then(values => {
     handNum = values[0].size
     oneHandType = values[0].docs[0].data().type
@@ -43,6 +46,7 @@ exports.answerSub = async (roomId, outReal, declare, loserId, loser, giverId, fi
     turn = values[2].data().turn
     isPenaltyTop = values[3].data()
     loserBurden = values[4].data().burden
+    secretReal = values[5].data()
   })
   //------------------------- 準備↑ ----------------------------//
 
@@ -56,8 +60,13 @@ exports.answerSub = async (roomId, outReal, declare, loserId, loser, giverId, fi
       //king
       if (declare === 'king') {
         if (oneHandType === 'king') {
-          loserDocRef.update({ isYesNoer: true })
-          progressDocRef.update({ phase: 'yesno' })
+          // yes/noを全員可視化@secretRealを利用
+          playersSnap.forEach(player => {
+            const invPlayerRef = fireStore.doc(`rooms/${roomId}/invPlayers/${player.id}`)
+            batch.set(invPlayerRef, { secretReal: secretReal })
+          })
+          batch.update(loserDocRef, { isYesNoer: true })
+          batch.update(progressDocRef, { phase: 'yesno' })
         } else {
           stop(roomId, loserId, null, fireStore, admin)
           return
@@ -65,17 +74,28 @@ exports.answerSub = async (roomId, outReal, declare, loserId, loser, giverId, fi
         //common
       } else {
         if (oneHandSpecies === declare) {
-          loserDocRef.update({ isYesNoer: true })
-          progressDocRef.update({ phase: 'yesno' })
+          // yes/noを全員可視化@secretRealを利用
+          playersSnap.forEach(player => {
+            const invPlayerRef = fireStore.doc(`rooms/${roomId}/invPlayers/${player.id}`)
+            batch.set(invPlayerRef, { secretReal: secretReal })
+          })
+          batch.update(loserDocRef, { isYesNoer: true })
+          batch.update(progressDocRef, { phase: 'yesno' })
         } else {
           stop(roomId, loserId, null, fireStore, admin)
           return
         }
       }
     } else if (handNum > 1) {
-      // 手札2枚以上（ほぼほぼここに誘導される）
-      loserDocRef.update({ isYesNoer: true })
-      progressDocRef.update({ phase: 'yesno' })
+      // 手札2枚以上（yesnoの場合、ほぼほぼここに誘導される）
+
+      // yes/noを全員可視化@secretRealを利用
+      playersSnap.forEach(player => {
+        const invPlayerRef = fireStore.doc(`rooms/${roomId}/invPlayers/${player.id}`)
+        batch.set(invPlayerRef, { secretReal: secretReal })
+      })
+      batch.update(loserDocRef, { isYesNoer: true })
+      batch.update(progressDocRef, { phase: 'yesno' })
     }
   } else {
     // realがYES NO以外（大体ここに誘導される）

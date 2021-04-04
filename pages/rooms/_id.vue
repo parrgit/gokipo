@@ -1,8 +1,6 @@
 <template>
   <div class="body">
     <div class="container">
-      <p style="margin:0;">{{ roomName }}</p>
-      <!-- ========================= TABLE ========================== -->
       <!-- ========================= TABLE ========================== -->
       <div class="table-container">
         <div class="progress">
@@ -11,9 +9,8 @@
           <p v-show="phase === 'yesno'">accumulator: {{ accumulatorName }}</p>
         </div>
         <hr />
-        <!-- ========================= CARD ZONE ========================== -->
         <!-- ============= OTHER ZONE ============== -->
-        <!-- TODOクラスにする tailwindow, windyの使用もあり -->
+        <!--TODO tailwindcss, windicssの使用もあり -->
         <div style="display:flex;">
           <div
             v-for="player in otherPlayers"
@@ -23,6 +20,7 @@
             @click="selectAcceptor(player.id)"
           >
             <div class="name-zone">
+              <!-- コンポーネント？ -->
               <p
                 :class="{
                   acceptor: acceptorId === { ...player }.id,
@@ -34,24 +32,14 @@
               >
                 {{ player.name }}
               </p>
-              <!-- セリフ-->
-              <p
-                v-show="
-                  (phase === 'accept' && player.isGiver) || (phase === 'yesno' && player.isGiver)
-                "
-              >
-                {{ progress.declare }}!
-              </p>
-              <p v-show="phase === 'accept' && player.isAcceptor">Hmm..</p>
-              <p v-show="(phase === 'give' || phase === 'pass') && player.isGiver">Hmm..</p>
-              <p v-show="phase === 'yesno' && player.isYesNoer">Ugh..</p>
-              <p v-show="phase === 'waiting' && player.isLoser">I have gout..</p>
+              <!-- セリフ -->
+              <!-- TODOケバブ -->
+              <OthersQuotes :player="player" :phase="phase" :progress="progress" />
             </div>
 
             <div>
-              <!-- 手札 -->
+              <!-- 他プレイヤーの手札 -->
               <div class="others-card-zone-hand">
-                <!-- TODOkeyをidにする -->
                 <div
                   v-for="i in player.handNum"
                   :key="i"
@@ -68,30 +56,15 @@
             <!-- 他プレイヤーの厄介ゾーン -->
             <div>
               <div class="others-card-zone-burden">
-                <div
-                  v-for="(value, key) in player.burden"
-                  :key="key"
-                  :style="{ position: 'relative' }"
-                >
-                  <!-- key:string value:[] -->
-                  <div
-                    v-for="(card, i) in value"
-                    :style="{ position: 'absolute', top: burdenBottom(i) + 'px', margin: '0' }"
-                    :class="{
-                      common: card.type === 'common',
-                      king: card.type === 'king',
-                      yesno: card.type === 'yes' || card.type === 'no',
-                    }"
-                    :key="card.id"
-                  >
-                    {{ card.species }}
-                  </div>
+                <div v-for="(value, key) in player.burden" :key="key" style="position:relative;">
+                  <BurdenCard v-for="(card, i) in value" :key="card.id" :card="card" :i="i" />
                 </div>
               </div>
             </div>
           </div>
         </div>
-        <!-- ============= PENALTY & REAL ZONE ============== -->
+        <!-- =============================== PENALTY & REAL ZONE ============================== -->
+        <!-- TODO<rooms-penalty-zone/> -->
         <div class="penalty-zone">
           <!-- penalty -->
           <div
@@ -102,131 +75,50 @@
             }"
             :key="i"
           ></div>
-          <div
-            v-show="Object.keys(penaltyTop).length"
-            style="position:absolute;"
-            :style="{ top: -(penaltyTop.bodyNum + 1) * 3 + 'px' }"
-            :class="{
-              common: penaltyTop.type === 'common',
-              king: penaltyTop.type === 'king',
-            }"
-          >
-            {{ penaltyTop.species }}
-          </div>
+          <PenaltyTopCard v-show="Object.keys(penaltyTop).length" :penaltyTop="penaltyTop" />
+
           <!-------------- REAL -------------->
           <!-- 通常は「？」 -->
-          <div
-            v-show="(phase === 'accept' || phase === 'pass') && !(phase === 'pass' && me.isGiver)"
-            style="position:absolute; left:-80px;bottom:20px;"
-            :class="['animate__animated animate__fadeInLeft']"
-          >
-            <p>?</p>
-          </div>
+          <InvisibleReal :phase="phase" :me="me" />
           <!-- 可視化状態 -->
-          <div
-            v-show="phase === 'pass' && me.isGiver"
-            style="position:absolute; left:-80px; bottom:20px;"
-            :class="[
-              'dashed animate__animated animate__fadeIn animate__repeat-2',
-              {
-                king: secretReal.type === 'king',
-                yesno: secretReal.type === 'yes' || secretReal.type === 'no',
-              },
-            ]"
-          >
-            <p>{{ secretReal.species }}</p>
-          </div>
+          <SecretReal :phase="phase" :me="me" :secretReal="secretReal" />
         </div>
-        <!-- ============= MY ZONE ============== -->
+        <!-- ================================== MY ZONE =================================== -->
         <div class="name-zone">
-          <p
-            :class="{
-              active:
-                (me.isGiver || me.isAcceptor || me.isYesNoer) && phase !== 'waiting' && !me.isLoser,
-              canbeNominated: !me.canbeNominated,
-              ready: me.isReady && phase === 'waiting',
-              loser: me.isLoser,
-            }"
-            style="user-select:none;"
-          >
-            {{ me.name }}
-          </p>
-          <!-- セリフ -->
-          <p v-show="(phase === 'accept' && me.isGiver) || (phase === 'yesno' && me.isGiver)">
-            {{ progress.declare }}!
-          </p>
-          <p v-show="phase === 'accept' && me.isAcceptor">Hmm..</p>
-          <p v-show="(phase === 'give' || phase === 'pass') && me.isGiver">Hmm..</p>
-          <p v-show="phase === 'yesno' && me.isYesNoer">Ugh..</p>
-          <p v-show="phase === 'waiting' && me.isLoser">I have gout..</p>
+          <MyName :me="me" :phase="phase" />
+          <!-- セリフ達 -->
+          <MyQuotes :me="me" :phase="phase" :progress="progress" />
         </div>
         <div>
           <!-- 自分の厄介者ゾーン -->
           <div>
             <div class="my-card-zone-burden">
               <div v-for="(value, key) in me.burden" :key="key" :style="{ position: 'relative' }">
-                <!-- key:string value:[] -->
-                <div
-                  v-for="(card, i) in value"
-                  :style="{
-                    position: 'absolute',
-                    margin: '0',
-                    bottom: burdenBottom(i) + 'px',
-                  }"
-                  :class="[
-                    'animate__animated animate__bounceIn',
-                    {
-                      common: card.type === 'common',
-                      king: card.type === 'king',
-                      yesno: card.type === 'yes' || card.type === 'no',
-                    },
-                  ]"
-                  :key="card.id"
-                >
-                  {{ card.species }}
-                </div>
+                <BurdenCard v-for="(card, i) in value" :key="card.id" :card="card" :i="i" />
               </div>
             </div>
           </div>
-          <!-- ========== HAND =========== -->
-          <!-- GIVE,ACCEPT,(WAITING)用 -->
+          <!-- ------------- MY HAND ------------- -->
+          <!-- GIVE,ACCEPT,(WAITING)フェーズ用 -->
           <div>
             <div v-if="phase !== 'yesno'" class="my-card-zone-hand">
-              <button
+              <MyHandCard
                 v-for="card in hand"
                 :key="card.id"
-                @click="realId = card.id"
-                :class="[
-                  'animate__animated animate__bounceIn',
-                  {
-                    selectedInHand: card.id === realId,
-                    king: card.type === 'king',
-                    yesno: card.type === 'yes' || card.type === 'no',
-                  },
-                ]"
-              >
-                {{ card.species }}
-              </button>
+                :card="card"
+                :realId="realId"
+                @select-card="realId = card.id"
+              />
             </div>
-            <!-- YES/NO用 -->
+            <!-- YES/NOフェーズ用 -->
             <div v-if="phase === 'yesno'" class="my-card-zone-hand">
-              <button
+              <MyHandCardYesNo
                 v-for="card in hand"
-                :key="card"
-                @click="queue(card.id)"
-                :class="[
-                  'animate__animated animate__bounceIn',
-                  {
-                    king: card.type === 'king',
-                    yesno: card.type === 'yes' || card.type === 'no',
-                    selectedInHand:
-                      card.id === { ...accumulations[0] }.id ||
-                      card.id === { ...accumulations[1] }.id,
-                  },
-                ]"
-              >
-                {{ card.species }}
-              </button>
+                :key="card.id"
+                :card="card"
+                :accumulations="accumulations"
+                @queue="queue($event)"
+              />
             </div>
           </div>
         </div>
@@ -239,7 +131,7 @@
         <button v-show="phase === 'waiting'" @click="join">Join</button>
         <button v-show="phase === 'waiting'" @click="ready">Ready</button>
         <select
-          v-show="((phase === 'give' && me.isGiver) || (phase === 'pass' && me.isGiver)) && !noHand"
+          v-show="((phase === 'give' && me.isGiver) || (phase === 'pass' && me.isGiver)) && isHand"
           v-model="declare"
         >
           <option value="" disabled selected>select a declare</option>
@@ -251,10 +143,12 @@
             <p>{{ declareElement }}</p>
           </option>
         </select>
-        <button v-show="phase === 'give' && me.isGiver && !noHand" @click="give">
+        <button v-show="phase === 'give' && me.isGiver && isHand" @click="give">
           Give
         </button>
-        <button v-show="phase === 'give' && noHand" @click="surrender">Surrender</button>
+        <button v-show="phase === 'give' && !isHand && Object.keys(me).length" @click="surrender">
+          Surrender
+        </button>
         <button v-show="phase === 'pass' && me.isGiver" @click="giveOfPass">
           Give
         </button>
@@ -272,6 +166,7 @@
 
 <script>
 import { mapActions, mapGetters } from 'vuex'
+
 export default {
   middleware: ['checkAuth'],
   data() {
@@ -283,21 +178,20 @@ export default {
       declareElements: ['ber', 'gzd', 'lvr', 'mon', 'nbs', 'sal', 'srp', 'king'],
       speciesElements: ['ber', 'gzd', 'lvr', 'mon', 'nbs', 'sal', 'srp'],
       animateActive: false,
+      showModal: false,
     }
   },
+
+  async created() {
+    const user = await this.$auth()
+    await this.fetchBasics({ roomId: this.roomId, uid: user.uid })
+  },
+
   computed: {
     ...mapGetters('user', ['uname', 'uid']),
-    ...mapGetters('basics', [
-      'roomName',
-      'phase',
-      'players',
-      'hand',
-      'progress',
-      'penaltyTop',
-      'secretReal',
-    ]),
-    noHand() {
-      return this.hand.length === 0
+    ...mapGetters('basics', ['phase', 'players', 'hand', 'progress', 'penaltyTop', 'secretReal']),
+    isHand() {
+      return this.hand.length !== 0 //手札あり
     },
     roomId() {
       return this.$route.params.id
@@ -316,9 +210,9 @@ export default {
         return card.id === this.realId
       })
     },
-    //accumulations[{}] <= accumulationIds[]
     accumulations() {
       //提出用1,2枚
+      //TODO filter?で書き換える
       const accumulations = []
       this.accumulationIds.forEach(accumulationId => {
         const obj = this.hand.find(card => {
@@ -351,7 +245,6 @@ export default {
         phase: this.progress.phase,
       }
     },
-
     giverName() {
       const giver = this.players.find(player => player.isGiver)
       return { ...giver }.name
@@ -366,37 +259,17 @@ export default {
     },
     canPass() {
       let canPass = false
-      //TODOforEachじゃなくてもかけるはず
+      //TODOforEachじゃなくてもかけるかな
       this.players.forEach(player => {
         canPass = canPass || player.canbeNominated
       })
       return canPass
     },
   },
-  async created() {
-    const user = await this.$auth()
-    await this.fetchBasics({ roomId: this.roomId, uid: user.uid })
-  },
+
   methods: {
-    test() {
-      // const myRef = this.$firestore.doc(`/rooms/${this.roomId}/players/${this.uid}`)
-      // // myRef.update({ burden: admin.firestore.FieldValue.arrayRemove({ id: 'id0100010id' }) })
-      //firestoreのarrayから特定の要素を削除する方法
-      // myRef.update({
-      //   burden: this.$firebase.firestore.FieldValue.arrayRemove({
-      //     id: 'id0100010id',
-      //     species: 'frg',
-      //     type: 'common',
-      //   }),
-      // })
-      const array = [1, 2, 3, 4, 5]
-      console.log(array)
-      array.forEach(arg => {
-        arg = 0
-      })
-      console.log(array)
-    },
     ...mapActions('basics', ['fetchBasics']),
+    test() {},
     left(i) {
       return i * 44
     },
@@ -407,7 +280,7 @@ export default {
       return i * 10
     },
     deg(i) {
-      return -40 + 4 * i
+      return -40 + 2.4 * i
     },
     top(i) {
       return Math.pow(this.deg(i) * 0.1, 2)
@@ -454,49 +327,35 @@ export default {
       const gameStart = this.$fireFunc.httpsCallable('gameStart')
       gameStart(this.roomId)
     },
-    // コンソールでreferenceをみる用
-    displayCards() {
-      let stack = []
-      const reference = this.$firestore.collection('/reference')
-      reference
-        .orderBy('species')
-        .get()
-        .then(col => {
-          col.forEach(doc => {
-            stack.push({ id: doc.id, type: doc.data().type, species: doc.data().species })
-          })
-          console.table(stack)
-        })
-        .catch(error => {
-          console.log('error getting documents: ', error)
-        })
-    },
     surrender() {
       const surrender = this.$fireFunc.httpsCallable('surrender')
       surrender(this.roomId)
-    },
-    // phaseをwaitingに戻す
-    waiting() {
-      const progress = this.$firestore.doc(`/rooms/${this.roomId}/progress/progDoc`)
-      progress.update({ phase: 'waiting' })
     },
     // プレイヤー選択
     selectAcceptor(playerId) {
       this.acceptorId = playerId
     },
     give() {
+      // 【バリデーション】細かいのはFunctionsでするため、事物/宣言/相手プレイヤーの選択を確認
+      const acceptor = this.players.find(player => player.id === this.acceptorId)
+      const isContinuable = this.real && this.declare && this.acceptorId && acceptor.canbeNominated
+      if (!isContinuable) {
+        alert('提出カード・宣言・受け手プレイヤーを確認してください')
+        return
+      }
       const give = this.$fireFunc.httpsCallable('give')
       give(this.submission)
     },
-    console() {
-      const handCol = this.$firestore.collection(
-        `/rooms/${this.roomId}/invPlayers/${this.uid}/hand`
-      )
-      handCol.get().then(col => {
-        col.forEach(doc => {
-          doc.ref.delete()
-        })
-      })
+    async giveOfPass() {
+      // 【バリデーション】細かいのはFunctionsでするため、事物/宣言/相手プレイヤーの選択を確認
+      const acceptor = this.players.find(player => player.id === this.acceptorId)
+      const isContinuable = this.declare && this.acceptorId && acceptor.canbeNominated
+      if (!isContinuable) {
+        alert('宣言、受け手を選択してください')
+        return
+      }
+      const giveOfPass = this.$fireFunc.httpsCallable('giveOfPass')
+      await giveOfPass(this.submissionOfPass)
     },
     initializeRoom() {
       const roomData = {
@@ -530,23 +389,22 @@ export default {
       const pass = this.$fireFunc.httpsCallable('pass')
       pass(this.roomId)
     },
-    async giveOfPass() {
-      const invPlayersDoc = this.$firestore.doc(`rooms/${this.roomId}/invPlayers/${this.uid}`)
-      const giveOfPass = this.$fireFunc.httpsCallable('giveOfPass')
-      if (!this.declare || !this.acceptorId) {
-        alert('宣言、受け手を選択してください')
-        return
-      }
-      await giveOfPass(this.submissionOfPass)
-      //secretRealの削除＠firestore
-      invPlayersDoc.set({})
-    },
+
     accumulate() {
       const accumulate = this.$fireFunc.httpsCallable('accumulate')
-      const accumulations = [...this.accumulations] //とりあえずスプレッド、必要ない可能性あり
       const declare = this.progress.declare
       let includeYesNo = false //提出カードにyes/noが含まれていないか
-      if (!accumulations) {
+
+      const accumulations = [] //溜める用カード1~2枚
+      //accumulationIdsからaccumulationを作成
+      this.accumulationIds.forEach(accumulationId => {
+        const obj = this.hand.find(card => {
+          return card.id === accumulationId
+        })
+        accumulations.push(obj)
+      })
+
+      if (!accumulations.length) {
         alert('溜めるカードを選択してください')
         return
       }
@@ -558,6 +416,9 @@ export default {
         alert('宣言と同じカードであれば1枚、同じでなければ2枚出してください')
         return
       }
+      //todoここでエラー発生 typeが無いとのこと 選択しても選択してなくてもでる
+      //todo 1枚選択時、2枚目がundefined、何も選択してない時1枚目のみundefined
+      console.log(accumulations) //todokesu
       accumulations.forEach(accumulation => {
         const flag = accumulation.type === 'yes' || accumulation.type === 'no'
         includeYesNo = includeYesNo || flag
@@ -612,9 +473,9 @@ export default {
 $basic: #0f0e17;
 @mixin card {
   height: 70px;
-  min-width: 33px;
+  width: 40px;
   border-radius: 3px;
-  border: 1px solid white;
+  border: 1px solid lighten($basic, 75%);
   font-size: 15px;
   display: grid;
   place-items: center;
@@ -677,11 +538,12 @@ select {
 }
 .my-card-zone-hand {
   display: flex;
+  flex-wrap: wrap;
   justify-content: flex-start;
-  height: 100px;
   div,
   button {
     @include card;
+    margin-top: 7px;
   }
 }
 .my-card-zone-burden {
@@ -729,16 +591,16 @@ select {
   }
 }
 .selectedInHand {
-  border: 2px solid lighten($basic, 40%) !important;
+  border: 2px solid hsl(90, 100%, 60%) !important;
 }
 .king {
-  background: hsl(60, 90%, 24%) !important;
+  background: hsl(60, 90%, 28%) !important;
 }
 .yesno {
   background: hsl(200, 90%, 24%) !important;
 }
 .common {
-  background: $basic !important;
+  background: lighten($basic, 28%) !important;
 }
 .progress {
   width: 600px;
@@ -768,13 +630,12 @@ select {
 .ready {
   background: lightcoral;
 }
-
 .dashed {
   border: 1px dashed white !important;
   color: white;
 }
-
-// .invisible {
-//   border-style: none;
-// }
+::v-deep img {
+  height: 80%;
+  width: 90%;
+}
 </style>

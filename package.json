@@ -10,21 +10,27 @@
     "test": "jest"
   },
   "dependencies": {
+    "@fortawesome/free-brands-svg-icons": "^5.15.3",
+    "@fortawesome/free-solid-svg-icons": "^5.15.3",
+    "@nuxtjs/markdownit": "^2.0.0",
     "animate.css": "^4.1.1",
     "array-foreach-async": "^1.0.1",
     "core-js": "^3.6.5",
     "express": "^4.17.1",
     "firebase": "^8.2.2",
-    "nuxt": "^2.14.6",
-    "vue-select": "^3.11.2"
+    "nuxt": "^2.15.3",
+    "nuxt-fontawesome": "^0.4.0",
+    "vue-final-modal": "^2.1.0"
   },
   "devDependencies": {
     "@vue/test-utils": "^1.1.0",
+    "autoprefixer": "^9.8.6",
     "babel-core": "7.0.0-bridge.0",
     "babel-jest": "^26.5.0",
     "fibers": "^5.0.0",
     "jest": "^26.5.0",
     "jquery": "^3.5.1",
+    "postcss": "^7.0.35",
     "sass": "^1.32.0",
     "sass-loader": "^10.1.0",
     "vue-jest": "^3.0.4"
