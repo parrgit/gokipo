@@ -27,6 +27,7 @@ export default {
     '@/plugins/auth',
     '@/plugins/async',
     '@/plugins/user',
+    '@/plugins/vee-validate',
     { src: '@/plugins/modal', mode: 'client' },
   ],
 
@@ -60,7 +61,7 @@ export default {
 
   // Build Configuration (https://go.nuxtjs.dev/config-build)
   build: {
-    transpile: ['vue-final-modal'],
+    transpile: ['vue-final-modal', 'vee-validate/dist/rules'],
     plugins: [
       new webpack.ProvidePlugin({
         jQuery: 'jquery',
