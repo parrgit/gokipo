@@ -1,0 +1,53 @@
+$basic: #0f0e17;
+$light: #fffffe;
+
+* {
+  box-sizing: border-box;
+  font-family: 'Courier New', sans-serif, Courier, monospace;
+  user-select: none;
+}
+
+body {
+  background: $basic;
+  color: $light;
+}
+
+.container {
+  margin: 0;
+  padding: 0;
+  min-height: 64vh;
+}
+
+h2,
+h3 {
+  margin-top: 20px;
+}
+
+button {
+  display: block;
+  margin: 10px auto;
+  padding: 10px 10px;
+  border-radius: 3px;
+  background: $basic;
+  color: $light;
+  border: 1px solid $light;
+  cursor: pointer;
+  &:hover {
+    opacity: 0.6;
+  }
+  outline: none;
+}
+
+a {
+  text-decoration: none;
+  color: $light;
+}
+
+::-webkit-scrollbar {
+  width: 10px;
+}
+/*スクロールバーの動く部分*/
+::-webkit-scrollbar-thumb {
+  background-color: $light;
+  border-radius: 10px;
+}

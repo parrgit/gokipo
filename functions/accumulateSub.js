@@ -38,7 +38,6 @@ exports.accumulateSub = async (roomId, outBurdens, declare, uid, fireStore, admi
   const playersSnapshot = fireStore.collection(`rooms/${roomId}/players`).get()
   const progressDocSnapshot = fireStore.doc(`rooms/${roomId}/progress/progDoc`).get()
 
-  // TODO const [realDocs, accumulateHandDocs] = await Promise
   await Promise.all([
     realDocSnapshot,
     accumulatorHandSnapshot,
@@ -156,6 +155,12 @@ exports.accumulateSub = async (roomId, outBurdens, declare, uid, fireStore, admi
     isYesNoer: false,
     canbeNominated: false,
     handNum: sum - burdens.length + 1, //yes/noで +1、burdensで -burdens.length
+  })
+
+  //yes/no表示用データ削除
+  playersSnap.docs.forEach(player => {
+    const invPlayerRef = fireStore.doc(`rooms/${roomId}/invPlayers/${player.id}`)
+    batch.set(invPlayerRef, {}) //secretReal削除
   })
 
   //フェーズとターン数更新
