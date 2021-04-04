@@ -484,7 +484,7 @@ $basic: #0f0e17;
 }
 .body {
   box-sizing: border-box;
-  height: 200vh;
+  height: 80vh;
 }
 .player {
   width: 330px;
