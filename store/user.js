@@ -23,8 +23,7 @@ export const actions = {
   //registerで登録したnameをfirestoreから取得
   setLoginUser({ commit }, user) {
     this.$firestore
-      .collection('users')
-      .doc(user.uid)
+      .doc(`users/${user.uid}`)
       .get()
       .then(doc => {
         commit('setLoginUser', { ...user, name: doc.data().name })

@@ -10,6 +10,7 @@
     <ModalBase v-if="isActiveModal" @closeModal="closeModal">
       <CreateRoomModal @closeModal="closeModal" />
     </ModalBase>
+    <button @click="test">test</button>
   </div>
 </template>
 
@@ -37,6 +38,10 @@ export default {
     if (this.unsubscribe) this.unsubscribe() //リスナーのデタッチ
   },
   methods: {
+    async test() {
+      const user = await this.$user()
+      console.log(user.name)
+    },
     ...mapActions('user', ['login', 'setLoginUser', 'deleteLoginUser']),
     moveToRoomPage(roomId) {
       this.$router.push(`/rooms/${roomId}`)

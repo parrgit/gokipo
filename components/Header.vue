@@ -11,7 +11,9 @@
     <div class="right-block">
       <p v-if="uname">name: {{ uname }}</p>
       <!-- ログインしていない時に気づかせる -->
-      <button style="line-height:50px;" @click="login" v-if="!uname">Login</button>
+      <button style="line-height:50px;" @click="login" v-if="!uname && !isRegisterPage">
+        Login
+      </button>
       <button style="line-height:20px;" @click="logout" v-if="uname">Logout</button>
       <button v-show="isRoomPage" @click="showModal = !showModal">Description</button>
     </div>
@@ -32,7 +34,6 @@
 
 <script>
 import mdFile from '@/assets/description.md'
-
 import { mapActions, mapGetters } from 'vuex'
 
 export default {
@@ -45,7 +46,10 @@ export default {
     ...mapGetters('basics', ['roomName']),
     ...mapGetters('user', ['uname']),
     isRoomPage() {
-      return this.$route.path.match(/\/rooms\/[A-Za-z0-9]*/)
+      return String(this.$route.path).match(/\/rooms(\/)*[A-Za-z0-9]*.*/)
+    },
+    isRegisterPage() {
+      return String(this.$route.path).match(/\/register(\/)*[A-Za-z0-9]*.*/)
     },
     mdFile() {
       return mdFile

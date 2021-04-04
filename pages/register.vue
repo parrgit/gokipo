@@ -2,10 +2,21 @@
   <div>
     <h1>Register</h1>
     <div>
-      <form @submit.prevent="onSubmit">
-        <input type="text" placeholder="input your name" v-model="uname" />
-        <button type="submit">send</button>
-      </form>
+      <!-- バリデーション付きform -->
+      <validation-observer
+        ref="observer"
+        v-slot="{ invalid }"
+        tag="form"
+        @submit.prevent="onSubmit"
+      >
+        <validation-provider v-slot="{ errors }" rules="required" name="name">
+          <input type="text" placeholder="input your name" class="input" v-model="uname" />
+          <p v-show="errors.length" class="help is-danger">
+            {{ errors[0] }}
+          </p>
+        </validation-provider>
+        <button type="submit" :disabled="invalid">send</button>
+      </validation-observer>
     </div>
   </div>
 </template>
@@ -20,20 +31,24 @@ export default {
   },
   methods: {
     async onSubmit() {
+      const isValid = await this.$refs.observer.validate()
+      if (!isValid) {
+        requestAnimationFrame(() => {
+          this.$refs.observer.reset()
+        })
+        return
+      }
       const user = await this.$auth()
-
       // 未ログインの場合
-      // /loginはまだつくってない
-      if (!user) this.$router.push('/')
-
+      if (!user) {
+        this.$router.push('/login')
+        return
+      }
       try {
-        await this.$firestore
-          .collection('users')
-          .doc(user.uid)
-          .set({
-            name: this.uname,
-          })
-        this.$router.push('/')
+        await this.$firestore.doc(`users/${user.uid}`).set({
+          name: this.uname,
+        })
+        this.$router.push('/'), location.reload()
       } catch (e) {
         alert('登録に失敗しました')
       }
@@ -46,5 +61,8 @@ export default {
 input {
   display: block;
   margin: 5px auto;
+}
+p {
+  text-align: center;
 }
 </style>
