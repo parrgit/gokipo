@@ -111,6 +111,9 @@ header {
   }
 }
 ::v-deep .modal-content {
+  h1,
+  h2,
+  h3,
   p,
   li,
   span {

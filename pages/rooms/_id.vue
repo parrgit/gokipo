@@ -1,7 +1,7 @@
 <template>
   <div class="body">
     <div class="container">
-      <!-- ========================= TABLE ========================== -->
+      <!-- ============== INFORMATION ============== -->
       <div class="table-container">
         <div class="progress">
           <p>phase: {{ phase }}</p>
@@ -10,7 +10,7 @@
         </div>
         <hr />
         <!-- ============= OTHER ZONE ============== -->
-        <!--TODO tailwindcss, windicssの使用もあり -->
+        <!--tailwindcss, windicssの使用もあり -->
         <div style="display:flex;">
           <div
             v-for="player in otherPlayers"
@@ -33,8 +33,7 @@
                 {{ player.name }}
               </p>
               <!-- セリフ -->
-              <!-- TODOケバブ -->
-              <OthersQuotes :player="player" :phase="phase" :progress="progress" />
+              <others-quotes :player="player" :phase="phase" :progress="progress" />
             </div>
 
             <div>
@@ -57,7 +56,7 @@
             <div>
               <div class="others-card-zone-burden">
                 <div v-for="(value, key) in player.burden" :key="key" style="position:relative;">
-                  <BurdenCard v-for="(card, i) in value" :key="card.id" :card="card" :i="i" />
+                  <burden-card v-for="(card, i) in value" :key="card.id" :card="card" :i="i" />
                 </div>
               </div>
             </div>
@@ -75,26 +74,26 @@
             }"
             :key="i"
           ></div>
-          <PenaltyTopCard v-show="Object.keys(penaltyTop).length" :penaltyTop="penaltyTop" />
+          <penalty-top-card v-show="Object.keys(penaltyTop).length" :penaltyTop="penaltyTop" />
 
           <!-------------- REAL -------------->
           <!-- 通常は「？」 -->
-          <InvisibleReal :phase="phase" :me="me" />
+          <invisible-real :phase="phase" :me="me" />
           <!-- 可視化状態 -->
-          <SecretReal :phase="phase" :me="me" :secretReal="secretReal" />
+          <secret-real :phase="phase" :me="me" :secretReal="secretReal" />
         </div>
         <!-- ================================== MY ZONE =================================== -->
         <div class="name-zone">
-          <MyName :me="me" :phase="phase" />
+          <my-name :me="me" :phase="phase" />
           <!-- セリフ達 -->
-          <MyQuotes :me="me" :phase="phase" :progress="progress" />
+          <my-quotes :me="me" :phase="phase" :progress="progress" />
         </div>
         <div>
           <!-- 自分の厄介者ゾーン -->
           <div>
             <div class="my-card-zone-burden">
               <div v-for="(value, key) in me.burden" :key="key" :style="{ position: 'relative' }">
-                <BurdenCard v-for="(card, i) in value" :key="card.id" :card="card" :i="i" />
+                <burden-card v-for="(card, i) in value" :key="card.id" :card="card" :i="i" />
               </div>
             </div>
           </div>
@@ -102,7 +101,7 @@
           <!-- GIVE,ACCEPT,(WAITING)フェーズ用 -->
           <div>
             <div v-if="phase !== 'yesno'" class="my-card-zone-hand">
-              <MyHandCard
+              <my-hand-card
                 v-for="card in hand"
                 :key="card.id"
                 :card="card"
@@ -112,7 +111,7 @@
             </div>
             <!-- YES/NOフェーズ用 -->
             <div v-if="phase === 'yesno'" class="my-card-zone-hand">
-              <MyHandCardYesNo
+              <my-hand-card-yes-no
                 v-for="card in hand"
                 :key="card.id"
                 :card="card"

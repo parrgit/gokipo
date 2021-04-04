@@ -9,7 +9,7 @@
       </div>
       <div>
         <button>
-          Crete
+          crete room
         </button>
       </div>
     </form>
@@ -78,8 +78,6 @@ export default {
           .then(doc => {
             //progressセット
             this.$firestore.doc(`/rooms/${doc.id}/progress/progDoc`).set(progressData)
-            //realセット
-            this.$firestore.doc(`/rooms/${doc.id}/real/realDoc`).set(realData)
           })
         this.$emit('closeModal')
       } catch (e) {
