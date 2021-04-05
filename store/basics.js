@@ -130,7 +130,7 @@ export const actions = {
 
     //secretRealをフェッチ
     invPlayerDoc.onSnapshot(doc => {
-      if (!doc.data().secretReal) {
+      if (!doc.data()) {
         return
       }
       const secretReal = doc.data().secretReal

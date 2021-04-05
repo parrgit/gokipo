@@ -11,9 +11,6 @@
     <div class="right-block">
       <p v-if="uname">name: {{ uname }}</p>
       <!-- ログインしていない時に気づかせる -->
-      <button style="line-height:50px;" @click="login" v-if="!uname && !isRegisterPage">
-        Login
-      </button>
       <button style="line-height:20px;" @click="logout" v-if="uname">Logout</button>
       <button v-show="isRoomPage" @click="showModal = !showModal">Description</button>
     </div>
@@ -56,7 +53,7 @@ export default {
     },
   },
   methods: {
-    ...mapActions('user', ['login', 'logout', 'setLoginUser', 'deleteLoginUser']),
+    ...mapActions('user', ['logout', 'setLoginUser', 'deleteLoginUser']),
   },
   async created() {
     const user = await this.$auth()

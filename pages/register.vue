@@ -48,7 +48,7 @@ export default {
         await this.$firestore.doc(`users/${user.uid}`).set({
           name: this.uname,
         })
-        this.$router.push('/'), location.reload()
+        this.$router.push('/'), location.reload() //Header更新用(Logout状態→Login状態にする)
       } catch (e) {
         alert('登録に失敗しました')
       }
