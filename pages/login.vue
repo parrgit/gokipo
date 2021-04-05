@@ -1,9 +1,9 @@
 <template>
   <div class="bg">
-    <h1>Please login or signup</h1>
+    <h1>Login or Signup</h1>
     <!-- ================================= login ================================= -->
     <div class="login-box">
-      <h2 class="title">login</h2>
+      <h2 class="title">Login</h2>
       <!-- email&passwordログイン -->
       <ValidationObserver
         ref="observer"
@@ -32,16 +32,16 @@
             {{ errors[0] }}
           </p>
         </validation-provider>
-        <button type="submit" :disabled="invalid">login with email</button>
+        <button type="submit" :disabled="invalid">Login with email</button>
       </ValidationObserver>
       <hr />
       <!-- googleログイン -->
-      <button type="submit" @click="googleLogin">login with google</button>
+      <button type="submit" @click="googleLogin">Login with google</button>
     </div>
 
     <!-- ================================= signup ================================= -->
     <div class="signup-box">
-      <h2 class="title">signup</h2>
+      <h2 class="title">Signup</h2>
       <ValidationObserver
         ref="observer"
         v-slot="{ invalid }"
@@ -69,7 +69,7 @@
             {{ errors[0] }}
           </p>
         </validation-provider>
-        <button type="submit" :disabled="invalid">singup with email</button>
+        <button type="submit" :disabled="invalid">Singup with email</button>
       </ValidationObserver>
     </div>
   </div>
@@ -104,6 +104,7 @@ $light: #fffffe;
   background-attachment: fixed;
   min-height: 100vh;
 }
+
 h1 {
   text-align: center;
   margin: 0;
