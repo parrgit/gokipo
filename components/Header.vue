@@ -85,6 +85,7 @@ $orange: hsl(20, 70%, 60%);
   width: 100%;
   min-height: 80px;
   background: rgba($basic, 0.7);
+  z-index: 10;
 }
 //タイトル
 h1 {
@@ -137,6 +138,9 @@ h1 {
 }
 
 //モーダル
+svg {
+  color: $orange;
+}
 ::v-deep .modal-container {
   display: flex;
   justify-content: center;

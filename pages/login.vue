@@ -102,7 +102,7 @@ $light: #fffffe;
   background-image: url('https://firebasestorage.googleapis.com/v0/b/gokipo-d9c62.appspot.com/o/purine.png?alt=media&token=6451267c-4abd-4fa5-830a-39c3ad66eb9a');
   background-size: cover;
   background-attachment: fixed;
-  min-height: 100vh;
+  min-height: 140vh;
 }
 
 h1 {
@@ -148,18 +148,18 @@ h1 {
 }
 
 .signup-box {
-  h2 {
-    text-align: center;
-  }
   height: 340px;
   width: 400px;
   background: rgba($basic, 0.8);
   border-radius: 10px;
-  margin: 20px auto;
+  margin: 20px auto 0;
   padding: 20px;
   button {
     margin-top: 30px;
     border: 1px solid hsl(20, 50%, 50%);
+  }
+  h2 {
+    text-align: center;
   }
   .title {
     color: hsl(20, 70%, 60%);

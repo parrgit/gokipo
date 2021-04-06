@@ -1,5 +1,6 @@
 $basic: #0f0e17;
 $light: #fffffe;
+$orange: hsl(20, 70%, 60%);
 
 * {
   box-sizing: border-box;
@@ -45,10 +46,10 @@ a {
 }
 
 ::-webkit-scrollbar {
-  width: 10px;
+  width: 5px;
 }
 /*スクロールバーの動く部分*/
 ::-webkit-scrollbar-thumb {
-  background-color: $light;
+  background-color: $orange;
   border-radius: 10px;
 }

@@ -10,7 +10,6 @@
         </div>
         <hr />
         <!-- ============= OTHER ZONE ============== -->
-        <!--tailwindcss, windicssの使用もあり -->
         <div style="display:flex;">
           <div
             v-for="player in otherPlayers"
@@ -63,9 +62,8 @@
           </div>
         </div>
         <!-- =============================== PENALTY & REAL ZONE ============================== -->
-        <!-- TODO<rooms-penalty-zone/> -->
         <div class="penalty-zone">
-          <!-- penalty -->
+          <!------------ penalty -------------->
           <div
             v-for="i in penaltyTop.bodyNum"
             style="position:absolute;"
@@ -153,7 +151,7 @@
         </button>
         <button v-show="phase === 'accept' && me.isAcceptor" @click="answer(true)">True!</button>
         <button v-show="phase === 'accept' && me.isAcceptor" @click="answer(false)">Lie!</button>
-        <button v-show="phase === 'accept' && me.isAcceptor && canPass" @click="pass">Pass</button>
+        <button v-show="phase === 'accept' && me.isAcceptor && isPassable" @click="pass">Pass</button>
         <button v-show="phase === 'yesno' && me.isYesNoer" @click="accumulate">Accumulate</button>
         <button v-show="phase === 'yesno' && me.isYesNoer" @click="accumulationsClear">
           clear
@@ -240,7 +238,7 @@ export default {
     },
     accumulations() {
       //提出用1,2枚
-      //TODO filter?で書き換える
+      //filter?で書き換えれるかな
       const accumulations = []
       this.accumulationIds.forEach(accumulationId => {
         const obj = this.hand.find(card => {
@@ -265,7 +263,6 @@ export default {
         roomId: this.roomId,
       }
     },
-
     giverName() {
       const giver = this.players.find(player => player.isGiver)
       return { ...giver }.name
@@ -278,19 +275,40 @@ export default {
       const accumulator = this.players.find(player => player.isYesNoer)
       return { ...accumulator }.name
     },
-    canPass() {
-      let canPass = false
-      //TODOforEachじゃなくてもかけるかな
-      this.players.forEach(player => {
-        canPass = canPass || player.canbeNominated
-      })
-      return canPass
+    isPassable() {
+      const reducer = (accumulator, currentValue) =>
+        accumulator.canbeNominated || currentValue.canbeNominated
+      return this.players.reduce(reducer)
     },
   },
 
   methods: {
     ...mapActions('basics', ['fetchBasics']),
-    test() {},
+
+    //デバッグ用
+    test() {
+      const reducer = (accumulator, currentValue) =>
+        accumulator.canbeNominated || currentValue.canbeNominated
+      console.log(this.players.reduce(reducer))
+    },
+    initializeRoom() {
+      const roomData = {
+        minNumber: 2,
+        maxNumber: 6,
+        currentNumber: 0,
+        createdAt: this.$firebase.firestore.FieldValue.serverTimestamp(),
+      }
+      const progressData = {
+        phase: 'waiting',
+        declare: null,
+        turn: 0,
+      }
+      const roomDoc = this.$firestore.doc(`/rooms/${this.roomId}`)
+      const progressDoc = this.$firestore.doc(`rooms/${this.roomId}/progress/progDoc`)
+      roomDoc.update(roomData)
+      progressDoc.update(progressData)
+    },
+
     left(i) {
       return i * 44
     },
@@ -317,8 +335,13 @@ export default {
     accumulationsClear() {
       while (this.accumulationIds.length) this.accumulationIds.pop() //配列の中身削除
     },
+    // プレイヤー選択
+    selectAcceptor(playerId) {
+      this.acceptorId = playerId
+    },
+
     // ゲーム参加
-    join() {
+    async join() {
       const playerData = {
         name: this.uname,
         isGiver: false,
@@ -334,8 +357,13 @@ export default {
         alert('waitingフェーズではありません')
         return
       }
-      this.$firestore.doc(`rooms/${this.roomId}/players/${this.uid}`).set(playerData)
+      try {
+        await this.$firestore.doc(`rooms/${this.roomId}/players/${this.uid}`).set(playerData)
+      } catch (e) {
+        alert(e.message)
+      }
     },
+
     // 自分のisReadyフラグをinvert -> functioins発火
     async ready() {
       const gameStart = this.$fireFunc.httpsCallable('gameStart')
@@ -351,12 +379,14 @@ export default {
     },
     async surrender() {
       const surrender = this.$fireFunc.httpsCallable('surrender')
-      await surrender(this.roomId)
+      try {
+        await surrender(this.roomId)
+      } catch (e) {
+        alert(e.message)
+      }
     },
-    // プレイヤー選択
-    selectAcceptor(playerId) {
-      this.acceptorId = playerId
-    },
+
+    // 宣言し、カードを渡す
     give() {
       // 【バリデーション】細かいのはFunctionsでするため、事物/宣言/相手プレイヤーの選択を確認
       const acceptor = this.players.find(player => player.id === this.acceptorId)
@@ -368,6 +398,8 @@ export default {
       const give = this.$fireFunc.httpsCallable('give')
       give(this.submission)
     },
+
+    //pass後のgive
     async giveOfPass() {
       // 【バリデーション】細かいのはFunctionsでするため、事物/宣言/相手プレイヤーの選択を確認
       const acceptor = this.players.find(player => player.id === this.acceptorId)
@@ -377,41 +409,41 @@ export default {
         return
       }
       const giveOfPass = this.$fireFunc.httpsCallable('giveOfPass')
-      await giveOfPass(this.submissionOfPass)
-    },
-    initializeRoom() {
-      const roomData = {
-        minNumber: 2,
-        maxNumber: 6,
-        currentNumber: 0,
-        createdAt: this.$firebase.firestore.FieldValue.serverTimestamp(),
+      try {
+        await giveOfPass(this.submissionOfPass)
+      } catch (e) {
+        alert(e.message)
       }
-      const progressData = {
-        phase: 'waiting',
-        declare: null,
-        turn: 0,
-      }
-      const roomDoc = this.$firestore.doc(`/rooms/${this.roomId}`)
-      const progressDoc = this.$firestore.doc(`rooms/${this.roomId}/progress/progDoc`)
-      roomDoc.update(roomData)
-      progressDoc.update(progressData)
     },
-    answer(ans) {
+
+    //回答
+    async answer(ans) {
       const answer = this.$fireFunc.httpsCallable('answer')
       const dataSet = {
         roomId: this.roomId,
         ans: ans,
       }
-      answer(dataSet)
+      try {
+        await answer(dataSet)
+      } catch (e) {
+        alert(e.message)
+      }
     },
-    pass() {
+
+    //パス
+    async pass() {
       if (this.phase !== 'accept' || !this.me.isAcceptor) {
         alert('acceptフェーズではない、又はあなたはacceptorではありません')
       }
       const pass = this.$fireFunc.httpsCallable('pass')
-      pass(this.roomId)
+      try {
+        await pass(this.roomId)
+      } catch (e) {
+        alert(e.message)
+      }
     },
 
+    // yesnoフェーズで溜める処理
     async accumulate() {
       const accumulate = this.$fireFunc.httpsCallable('accumulate')
       const declare = this.progress.declare
@@ -532,25 +564,13 @@ $basic: #0f0e17;
   width: 330px;
   margin: 20px;
 }
-.game-table {
-  width: 800px;
-  height: 320px;
-  border: 1px solid #fffffe;
-  margin: auto;
-  display: flex;
-  p {
-    line-height: 10px;
-    font-size: 15px;
-  }
-}
+
 .buttons {
   margin: 0 auto;
   width: 500px;
   display: flex;
 }
-.debugs {
-  display: flex;
-}
+
 .me {
   background: #333;
 }
@@ -679,5 +699,21 @@ select {
 ::v-deep img {
   height: 80%;
   width: 90%;
+}
+
+//デバッグ用
+.game-table {
+  max-width: 800px;
+  height: 320px;
+  border: 1px solid #fffffe;
+  margin: auto;
+  display: flex;
+  p {
+    line-height: 10px;
+    font-size: 15px;
+  }
+}
+.debugs {
+  display: flex;
 }
 </style>
