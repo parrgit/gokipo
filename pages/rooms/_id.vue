@@ -265,14 +265,7 @@ export default {
         roomId: this.roomId,
       }
     },
-    submissionOfAccumulate() {
-      return {
-        roomId: this.roomId,
-        accumulations: this.accumulations,
-        declare: this.progress.declare,
-        phase: this.progress.phase,
-      }
-    },
+
     giverName() {
       const giver = this.players.find(player => player.isGiver)
       return { ...giver }.name
@@ -419,10 +412,9 @@ export default {
       pass(this.roomId)
     },
 
-    accumulate() {
+    async accumulate() {
       const accumulate = this.$fireFunc.httpsCallable('accumulate')
       const declare = this.progress.declare
-      let includeYesNo = false //提出カードにyes/noが含まれていないか
 
       //accumulationIdsからaccumulations(溜めるカード1~2枚)を作成
       const accumulations = []
@@ -430,29 +422,42 @@ export default {
         const obj = this.hand.find(card => {
           return card.id === accumulationId
         })
-        console.log(obj) //todokesu
         if (obj) accumulations.push(obj)
       })
+
+      // accumulateで必要な情報セット
+      const submission = {
+        roomId: this.roomId,
+        accumulations: accumulations,
+        declare: this.progress.declare,
+        phase: this.phase,
+      }
 
       if (!accumulations.length) {
         alert('溜めるカードを選択してください')
         return
       }
-      //todoここでエラー発生 typeが無いとのこと 選択しても選択してなくてもでる
-      //todo 1枚選択時、2枚目がundefined、何も選択してない時1枚目のみundefined
+
+      //提出カードにyes/noが含まれていないか
+      let includeYesNo = false
       accumulations.forEach(accumulation => {
-        const flag = accumulation.type === 'yes' || accumulation.type === 'no'
-        includeYesNo = includeYesNo || flag
+        includeYesNo = includeYesNo || accumulation.type === 'yes' || accumulation.type === 'no'
       })
+
       if (includeYesNo) {
         alert('yes/noは選択できません')
         return
       }
+
       //1枚提出
       if (accumulations.length < 2) {
         if (declare === 'king') {
           if (accumulations[0].type === 'king') {
-            accumulate(this.submissionOfAccumulate)
+            try {
+              await accumulate(submission)
+            } catch (e) {
+              alert(e.message)
+            }
             return
           } else {
             alert('1枚のキングを溜めるか、キング以外で2枚溜めてください')
@@ -460,7 +465,12 @@ export default {
           }
         } else {
           if (accumulations[0].species === declare) {
-            accumulate(this.submissionOfAccumulate)
+            // 1枚溜めでは大体ここに誘導される
+            try {
+              await accumulate(submission)
+            } catch (e) {
+              alert(e.message)
+            }
             return
           } else {
             alert('宣言された物と同じ厄介者を溜めてください')
@@ -471,14 +481,22 @@ export default {
         //2枚提出
         if (declare === 'king') {
           if (accumulations[0].type !== declare && accumulations[1].type !== declare) {
-            accumulate(this.submissionOfAccumulate)
+            try {
+              await accumulate(submission)
+            } catch (e) {
+              alert(e.message)
+            }
             return
           } else {
             alert('2枚溜める場合は、宣言と違う厄介者を溜めてください')
           }
         } else {
           if (accumulations[0].species !== declare && accumulations[1].species !== declare) {
-            accumulate(this.submissionOfAccumulate)
+            try {
+              await accumulate(submission)
+            } catch (e) {
+              alert(e.message)
+            }
             return
           } else {
             alert('2枚溜める場合は、宣言と違う厄介者を溜めてください')
