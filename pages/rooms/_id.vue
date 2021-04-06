@@ -513,6 +513,7 @@ $basic: #0f0e17;
 .body {
   box-sizing: border-box;
   height: 200vh;
+  padding-top: 90px;
 }
 .player {
   width: 330px;
