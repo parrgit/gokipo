@@ -135,11 +135,9 @@ export const actions = {
           type: 'none',
           species: 'none',
         }
-        console.log(doc.data())
         commit('addSecretReal', secretReal)
       } else {
         const secretReal = doc.data().secretReal
-        console.log('nya',secretReal)
         commit('addSecretReal', secretReal)
       }
     })

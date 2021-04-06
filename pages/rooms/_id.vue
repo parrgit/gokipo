@@ -345,19 +345,20 @@ export default {
     },
     // 自分のisReadyフラグをinvert -> functioins発火
     async ready() {
-      const playerDoc = this.$firestore.doc(`/rooms/${this.roomId}/players/${this.uid}`)
-      // isReadyをinvertしてからgameStart関数を呼ぶ
-      await playerDoc.get().then(doc => {
-        playerDoc.update({
-          isReady: !doc.data().isReady,
-        })
-      })
       const gameStart = this.$fireFunc.httpsCallable('gameStart')
-      gameStart(this.roomId)
+      const playerRef = this.$firestore.doc(`/rooms/${this.roomId}/players/${this.uid}`)
+      // isReadyをinvertしてからgameStart関数を呼ぶ
+      try {
+        const playerSnap = await playerRef.get()
+        await playerRef.update({ isReady: !playerSnap.data().isReady })
+        await gameStart(this.roomId)
+      } catch (e) {
+        alert(e.message)
+      }
     },
-    surrender() {
+    async surrender() {
       const surrender = this.$fireFunc.httpsCallable('surrender')
-      surrender(this.roomId)
+      await surrender(this.roomId)
     },
     // プレイヤー選択
     selectAcceptor(playerId) {
@@ -424,29 +425,21 @@ export default {
       let includeYesNo = false //提出カードにyes/noが含まれていないか
 
       //accumulationIdsからaccumulations(溜めるカード1~2枚)を作成
-      const accumulations = [] 
+      const accumulations = []
       this.accumulationIds.forEach(accumulationId => {
         const obj = this.hand.find(card => {
           return card.id === accumulationId
         })
-        accumulations.push(obj)
+        console.log(obj) //todokesu
+        if (obj) accumulations.push(obj)
       })
 
       if (!accumulations.length) {
         alert('溜めるカードを選択してください')
         return
       }
-      if (this.progress.phase !== 'yesno') {
-        alert('yesnoフェーズではありません')
-        return
-      }
-      if (accumulations.length < 1 || accumulations.length > 2) {
-        alert('宣言と同じカードであれば1枚、同じでなければ2枚出してください')
-        return
-      }
       //todoここでエラー発生 typeが無いとのこと 選択しても選択してなくてもでる
       //todo 1枚選択時、2枚目がundefined、何も選択してない時1枚目のみundefined
-      console.log(accumulations) //todokesu
       accumulations.forEach(accumulation => {
         const flag = accumulation.type === 'yes' || accumulation.type === 'no'
         includeYesNo = includeYesNo || flag
