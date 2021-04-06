@@ -423,8 +423,8 @@ export default {
       const declare = this.progress.declare
       let includeYesNo = false //提出カードにyes/noが含まれていないか
 
-      const accumulations = [] //溜める用カード1~2枚
-      //accumulationIdsからaccumulationを作成
+      //accumulationIdsからaccumulations(溜めるカード1~2枚)を作成
+      const accumulations = [] 
       this.accumulationIds.forEach(accumulationId => {
         const obj = this.hand.find(card => {
           return card.id === accumulationId
@@ -511,8 +511,10 @@ $basic: #0f0e17;
   margin: 0 5px 0 0;
 }
 .body {
-  box-sizing: border-box;
-  height: 200vh;
+  background-image: url('https://firebasestorage.googleapis.com/v0/b/gokipo-d9c62.appspot.com/o/room-background%2F074DFCE1-710B-4C74-8277-8F39B79A3C20-451-000000166E74D10B.JPG?alt=media&token=218772db-4a28-40cb-b052-d0d564fa1d35');
+  background-size: cover;
+  background-attachment: fixed;
+  min-height: 100vh;
   padding-top: 90px;
 }
 .player {
