@@ -160,35 +160,6 @@
         </button>
       </div>
     </div>
-    <!-- ==================== debug tools ==================== -->
-    <hr />
-    <h2>for debug</h2>
-
-    <div class="debugs">
-      <button @click="initializeRoom">ルーム初期化用(2021/3/4)</button>
-      <button @click="test">test</button>
-    </div>
-    <div class="game-table">
-      <button
-        v-for="player in players"
-        :key="player.id"
-        @click="selectAcceptor(player.id)"
-        :class="['player', { me: player.id === uid }]"
-        :disabled="player.id === uid"
-      >
-        <!-- <p>id: {{ player.id }}</p> -->
-        <p>name: {{ player.name }}</p>
-        <p :class="{ isActive: player.isReady }">isReady: {{ player.isReady }}</p>
-        <p :class="{ isActive: player.isAcceptor }">isAcceptor: {{ player.isAcceptor }}</p>
-        <p :class="{ isActive: player.isYesNoer }">isYesNoer: {{ player.isYesNoer }}</p>
-        <p :class="{ isActive: player.isGiver }">isGiver: {{ player.isGiver }}</p>
-        <p :class="{ isActive: !player.canbeNominated }">
-          canbeNominated: {{ player.canbeNominated }}
-        </p>
-        <p>isLoser: {{ player.isLoser }}</p>
-        <p>handNum: {{ player.handNum }}</p>
-      </button>
-    </div>
   </div>
 </template>
 
