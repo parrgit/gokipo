@@ -2,14 +2,14 @@
   <div>
     <form @submit.prevent="onSubmit">
       <div>
-        <textarea v-model="name.val" @blur="validateName" placeholder="room name" />
+        <input v-model="name.val" @blur="validateName" placeholder="room name" />
         <span v-show="name.errorMessage">
           {{ name.errorMessage }}
         </span>
       </div>
       <div>
         <button>
-          Crete
+          crete room
         </button>
       </div>
     </form>
@@ -78,8 +78,6 @@ export default {
           .then(doc => {
             //progressセット
             this.$firestore.doc(`/rooms/${doc.id}/progress/progDoc`).set(progressData)
-            //realセット
-            this.$firestore.doc(`/rooms/${doc.id}/real/realDoc`).set(realData)
           })
         this.$emit('closeModal')
       } catch (e) {
@@ -99,3 +97,20 @@ export default {
   },
 }
 </script>
+
+<style lang="scss" scoped>
+$basic: #0f0e17;
+$light: #fffffe;
+input {
+  display: block;
+  margin: auto;
+  width: 240px;
+  margin-top: 30px;
+  padding: 10px;
+  border: none;
+  border-radius: 5px;
+  font-size: 14px;
+  color: $basic;
+  outline: none;
+}
+</style>

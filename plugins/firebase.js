@@ -1,6 +1,7 @@
 import firebase from 'firebase/app'
 import 'firebase/firestore'
 import 'firebase/auth'
+import 'firebase/database'
 import 'firebase/storage'
 import 'firebase/functions'
 import config from '~/firebaseConfig.json'
@@ -18,6 +19,5 @@ export default ({ app }, inject) => {
   // inject('fireFunc', firebase.functions())
 }
 
-// TODO最終的に消す
 // const functions = firebase.functions()
 // functions.useFunctionsEmulator('http://localhost:5000')
