@@ -151,7 +151,9 @@
         </button>
         <button v-show="phase === 'accept' && me.isAcceptor" @click="answer(true)">True!</button>
         <button v-show="phase === 'accept' && me.isAcceptor" @click="answer(false)">Lie!</button>
-        <button v-show="phase === 'accept' && me.isAcceptor && isPassable" @click="pass">Pass</button>
+        <button v-show="phase === 'accept' && me.isAcceptor && isPassable" @click="pass">
+          Pass
+        </button>
         <button v-show="phase === 'yesno' && me.isYesNoer" @click="accumulate">Accumulate</button>
         <button v-show="phase === 'yesno' && me.isYesNoer" @click="accumulationsClear">
           clear
@@ -286,10 +288,9 @@ export default {
     ...mapActions('basics', ['fetchBasics']),
 
     //デバッグ用
-    test() {
-      const reducer = (accumulator, currentValue) =>
-        accumulator.canbeNominated || currentValue.canbeNominated
-      console.log(this.players.reduce(reducer))
+    async test() {
+      const user = await this.$auth()
+      console.log(user.uid)
     },
     initializeRoom() {
       const roomData = {
