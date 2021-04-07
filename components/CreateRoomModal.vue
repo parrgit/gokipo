@@ -2,7 +2,7 @@
   <div>
     <form @submit.prevent="onSubmit">
       <div>
-        <textarea v-model="name.val" @blur="validateName" placeholder="room name" />
+        <input v-model="name.val" @blur="validateName" placeholder="room name" />
         <span v-show="name.errorMessage">
           {{ name.errorMessage }}
         </span>
@@ -13,7 +13,7 @@
         </button>
       </div>
     </form>
-    <button @click="deleteRooms">delete rooms</button>
+    <!-- <button @click="deleteRooms">delete rooms</button> -->
   </div>
 </template>
 
@@ -84,16 +84,33 @@ export default {
         alert('登録に失敗しました')
       }
     },
-    deleteRooms() {
-      this.$firestore
-        .collection('/rooms')
-        .get()
-        .then(snapshot => {
-          snapshot.forEach(doc => {
-            doc.ref.delete()
-          })
-        })
-    },
+    // deleteRooms() {
+    //   this.$firestore
+    //     .collection('/rooms')
+    //     .get()
+    //     .then(snapshot => {
+    //       snapshot.forEach(doc => {
+    //         doc.ref.delete()
+    //       })
+    //     })
+    // },
   },
 }
 </script>
+
+<style lang="scss" scoped>
+$basic: #0f0e17;
+$light: #fffffe;
+input {
+  display: block;
+  margin: auto;
+  width: 240px;
+  margin-top: 30px;
+  padding: 10px;
+  border: none;
+  border-radius: 5px;
+  font-size: 14px;
+  color: $basic;
+  outline: none;
+}
+</style>

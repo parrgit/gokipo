@@ -4,8 +4,10 @@
       <div>
         <div class="rooms-box">
           <h2>rooms</h2>
-          <div v-for="room in rooms" :key="room.id" @click="moveToRoomPage(room.id)">
-            <p>{{ room.name }}</p>
+          <div class="rooms-display">
+            <p v-for="room in rooms" :key="room.id" @click="moveToRoomPage(room.id)">
+              {{ room.name }}
+            </p>
           </div>
           <div><button @click="openModal">+</button></div>
           <ModalBase v-if="isActiveModal" @closeModal="closeModal">
@@ -80,7 +82,7 @@ h1 {
   h2 {
     text-align: center;
   }
-  height: 300px;
+  height: 550px;
   width: 400px;
   background: rgba($basic, 0.8);
   border-radius: 10px;
@@ -108,6 +110,10 @@ h1 {
     font-size: 14px;
     color: $basic;
     outline: none;
+  }
+  .rooms-display {
+    height: 200px;
+    overflow: scroll;
   }
 }
 </style>
