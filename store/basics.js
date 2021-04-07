@@ -71,7 +71,7 @@ export const actions = {
     const roomDoc = this.$firestore.doc(`rooms/${roomId}`)
     const progressDoc = this.$firestore.doc(`rooms/${roomId}/progress/progDoc`)
     const playersCol = this.$firestore.collection(`rooms/${roomId}/players`)
-    const invPlayerDoc = this.$firestore.doc(`rooms/${roomId}/invPlayers/${uid}`)
+    const invPlayerRef = this.$firestore.doc(`rooms/${roomId}/invPlayers/${uid}`)
     const handCol = this.$firestore.collection(`rooms/${roomId}/invPlayers/${uid}/hand`)
     const penaltyTopDoc = this.$firestore.doc(`rooms/${roomId}/penaltyTop/penaDoc`)
 
@@ -129,12 +129,17 @@ export const actions = {
     })
 
     //secretRealをフェッチ
-    invPlayerDoc.onSnapshot(doc => {
+    invPlayerRef.onSnapshot(doc => {
       if (!doc.data().secretReal) {
-        return
+        const secretReal = {
+          type: 'none',
+          species: 'none',
+        }
+        commit('addSecretReal', secretReal)
+      } else {
+        const secretReal = doc.data().secretReal
+        commit('addSecretReal', secretReal)
       }
-      const secretReal = doc.data().secretReal
-      commit('addSecretReal', secretReal)
     })
   },
 }

@@ -12,7 +12,9 @@
   </transition>
 </template>
 
-<style scoped>
+<style lang="scss" scoped>
+
+
 .v-leave-active,
 .v-enter-active {
   transition: opacity 0.4s ease-out;
@@ -28,7 +30,5 @@
   opacity: 1;
 }
 
-div{
-  border: 1px solid white
-}
+
 </style>

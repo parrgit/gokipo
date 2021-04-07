@@ -1,36 +1,36 @@
 <template>
-  <div>
-    <div>
-      <h1>rooms</h1>
-      <div v-for="room in rooms" :key="room.id" @click="moveToRoomPage(room.id)">
-        <p>{{ room.name }}</p>
+  <div class="bg">
+    <div class="container">
+      <div>
+        <div class="rooms-box">
+          <h2>rooms</h2>
+          <div class="rooms-display">
+            <p v-for="room in rooms" :key="room.id" @click="moveToRoomPage(room.id)">
+              {{ room.name }}
+            </p>
+          </div>
+          <div><button @click="openModal">+</button></div>
+          <ModalBase v-if="isActiveModal" @closeModal="closeModal">
+            <CreateRoomModal @closeModal="closeModal" />
+          </ModalBase>
+        </div>
       </div>
-      <div><button @click="openModal">+</button></div>
     </div>
-    <ModalBase v-if="isActiveModal" @closeModal="closeModal">
-      <CreateRoomModal @closeModal="closeModal" />
-    </ModalBase>
   </div>
 </template>
 
 <script>
-import { mapState, mapGetters, mapActions } from 'vuex'
+import { mapGetters, mapActions } from 'vuex'
 export default {
-  middleware: ["checkAuth"],
+  middleware: ['checkAuth'],
   data() {
     return {
       isActiveModal: false,
       unsubscribe: null, //リスナーのデタッチ用
-      //↓デバック用
-      name: '',
-      funcSample: null,
-      type: '',
-      species: '',
     }
   },
   computed: {
     ...mapGetters('rooms', ['rooms']),
-    // ...mapGetters('user', ['user']),
   },
   async asyncData({ store }) {
     const unsubscribe = await store.dispatch('rooms/subscribe')
@@ -44,10 +44,6 @@ export default {
   },
   methods: {
     ...mapActions('user', ['login', 'setLoginUser', 'deleteLoginUser']),
-    async displayUser() {
-      const user = await this.$auth()
-      console.log(user)
-    },
     moveToRoomPage(roomId) {
       this.$router.push(`/rooms/${roomId}`)
     },
@@ -57,64 +53,67 @@ export default {
     closeModal() {
       this.isActiveModal = false
     },
-    //↓デバッグ用
-    // クライアントからfunctions上の関数を呼び出す(スタートガイド)
-    // async addMessage() {
-    //   const addMessage = this.$fireFunc.httpsCallable('addMessage')
-    //   await addMessage('baiyoeeen').then(result => {
-    //     this.funcSample = result.data.text
-    //   })
-    // },
-
-    // functions上でDBの内容をgetする
-    // async test() {
-    //   const getFirestore = this.$fireFunc.httpsCallable('getFirestore')
-    //   await getFirestore()
-    // },
-    // 引数にオブジェクトいけるんやっけ→いけた
-    ObjArg(obj) {
-      console.log(obj.type)
-      console.log(obj.species)
-    },
-
-    // firestoreにカードを入れ込む用
-    addCard() {
-      this.$firestore.collection('/reference').add({
-        type: this.type,
-        species: this.species,
-      })
-      this.type = ''
-      this.species = ''
-    },
-
-    // 不要なカード削除用
-    deleteCards() {
-      this.$firestore
-        .collection('/room/jQgG7tfijgG4JZ3mLmlQ/field/euI0wuMll7mliznQimQB/reference')
-        .where('species', '==', '')
-        .get()
-        .then(snapshot => {
-          snapshot.forEach(doc => {
-            doc.ref.delete()
-          })
-        })
-    },
-
-    // consoleでrefferenceをみる用
-    displayCards() {
-      this.$firestore
-        .collection('/reference')
-        .orderBy('species')
-        .get()
-        .then(snapshot => {
-          snapshot.forEach(doc => {
-            console.log(doc.id, ' => ', doc.data().species, doc.data().type)
-          })
-        })
-        .catch(error => {
-          console.log('error getting documents: ', error)
-        })
-    },
   },
 }
 </script>
+
+<style lang="scss" scoped>
+$basic: #0f0e17;
+$light: #fffffe;
+
+.bg {
+  background-image: url('https://firebasestorage.googleapis.com/v0/b/gokipo-d9c62.appspot.com/o/purine.png?alt=media&token=6451267c-4abd-4fa5-830a-39c3ad66eb9a');
+  background-size: cover;
+  background-attachment: fixed;
+  min-height: 100vh;
+}
+h1 {
+  text-align: center;
+  margin: 0;
+  padding: 0 0 0 10px;
+  text-shadow: 2px 0 0 black, 0 2px 0 black, -2px 0 0 black, 0 -2px 0 black;
+}
+.container {
+  max-width: 1000px;
+  margin: auto;
+  padding-top: 100px;
+}
+.rooms-box {
+  h2 {
+    text-align: center;
+  }
+  height: 550px;
+  width: 400px;
+  background: rgba($basic, 0.8);
+  border-radius: 10px;
+  margin: 20px auto;
+  padding: 20px;
+  button {
+    margin-top: 30px;
+    border: 1px solid hsl(20, 50%, 50%);
+  }
+  .title {
+    color: hsl(20, 70%, 60%);
+  }
+  hr {
+    margin-top: 30px;
+    border: 1px solid $light;
+  }
+  input {
+    display: block;
+    margin: auto;
+    width: 240px;
+    margin-top: 30px;
+    padding: 10px;
+    border: none;
+    border-radius: 5px;
+    font-size: 14px;
+    color: $basic;
+    outline: none;
+  }
+  .rooms-display {
+    height: 200px;
+    overflow: scroll;
+  }
+}
+</style>

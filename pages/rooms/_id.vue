@@ -1,7 +1,7 @@
 <template>
   <div class="body">
     <div class="container">
-      <!-- ========================= TABLE ========================== -->
+      <!-- ============== INFORMATION ============== -->
       <div class="table-container">
         <div class="progress">
           <p>phase: {{ phase }}</p>
@@ -10,7 +10,6 @@
         </div>
         <hr />
         <!-- ============= OTHER ZONE ============== -->
-        <!--TODO tailwindcss, windicssの使用もあり -->
         <div style="display:flex;">
           <div
             v-for="player in otherPlayers"
@@ -33,8 +32,7 @@
                 {{ player.name }}
               </p>
               <!-- セリフ -->
-              <!-- TODOケバブ -->
-              <OthersQuotes :player="player" :phase="phase" :progress="progress" />
+              <others-quotes :player="player" :phase="phase" :progress="progress" />
             </div>
 
             <div>
@@ -57,16 +55,15 @@
             <div>
               <div class="others-card-zone-burden">
                 <div v-for="(value, key) in player.burden" :key="key" style="position:relative;">
-                  <BurdenCard v-for="(card, i) in value" :key="card.id" :card="card" :i="i" />
+                  <burden-card v-for="(card, i) in value" :key="card.id" :card="card" :i="i" />
                 </div>
               </div>
             </div>
           </div>
         </div>
         <!-- =============================== PENALTY & REAL ZONE ============================== -->
-        <!-- TODO<rooms-penalty-zone/> -->
         <div class="penalty-zone">
-          <!-- penalty -->
+          <!------------ penalty -------------->
           <div
             v-for="i in penaltyTop.bodyNum"
             style="position:absolute;"
@@ -75,26 +72,26 @@
             }"
             :key="i"
           ></div>
-          <PenaltyTopCard v-show="Object.keys(penaltyTop).length" :penaltyTop="penaltyTop" />
+          <penalty-top-card v-show="Object.keys(penaltyTop).length" :penaltyTop="penaltyTop" />
 
           <!-------------- REAL -------------->
           <!-- 通常は「？」 -->
-          <InvisibleReal :phase="phase" :me="me" />
+          <invisible-real :phase="phase" :me="me" />
           <!-- 可視化状態 -->
-          <SecretReal :phase="phase" :me="me" :secretReal="secretReal" />
+          <secret-real :phase="phase" :me="me" :secretReal="secretReal" />
         </div>
         <!-- ================================== MY ZONE =================================== -->
         <div class="name-zone">
-          <MyName :me="me" :phase="phase" />
+          <my-name :me="me" :phase="phase" />
           <!-- セリフ達 -->
-          <MyQuotes :me="me" :phase="phase" :progress="progress" />
+          <my-quotes :me="me" :phase="phase" :progress="progress" />
         </div>
         <div>
           <!-- 自分の厄介者ゾーン -->
           <div>
             <div class="my-card-zone-burden">
               <div v-for="(value, key) in me.burden" :key="key" :style="{ position: 'relative' }">
-                <BurdenCard v-for="(card, i) in value" :key="card.id" :card="card" :i="i" />
+                <burden-card v-for="(card, i) in value" :key="card.id" :card="card" :i="i" />
               </div>
             </div>
           </div>
@@ -102,7 +99,7 @@
           <!-- GIVE,ACCEPT,(WAITING)フェーズ用 -->
           <div>
             <div v-if="phase !== 'yesno'" class="my-card-zone-hand">
-              <MyHandCard
+              <my-hand-card
                 v-for="card in hand"
                 :key="card.id"
                 :card="card"
@@ -112,7 +109,7 @@
             </div>
             <!-- YES/NOフェーズ用 -->
             <div v-if="phase === 'yesno'" class="my-card-zone-hand">
-              <MyHandCardYesNo
+              <my-hand-card-yes-no
                 v-for="card in hand"
                 :key="card.id"
                 :card="card"
@@ -154,7 +151,9 @@
         </button>
         <button v-show="phase === 'accept' && me.isAcceptor" @click="answer(true)">True!</button>
         <button v-show="phase === 'accept' && me.isAcceptor" @click="answer(false)">Lie!</button>
-        <button v-show="phase === 'accept' && me.isAcceptor && canPass" @click="pass">Pass</button>
+        <button v-show="phase === 'accept' && me.isAcceptor && isPassable" @click="pass">
+          Pass
+        </button>
         <button v-show="phase === 'yesno' && me.isYesNoer" @click="accumulate">Accumulate</button>
         <button v-show="phase === 'yesno' && me.isYesNoer" @click="accumulationsClear">
           clear
@@ -212,7 +211,7 @@ export default {
     },
     accumulations() {
       //提出用1,2枚
-      //TODO filter?で書き換える
+      //filter?で書き換えれるかな
       const accumulations = []
       this.accumulationIds.forEach(accumulationId => {
         const obj = this.hand.find(card => {
@@ -237,14 +236,6 @@ export default {
         roomId: this.roomId,
       }
     },
-    submissionOfAccumulate() {
-      return {
-        roomId: this.roomId,
-        accumulations: this.accumulations,
-        declare: this.progress.declare,
-        phase: this.progress.phase,
-      }
-    },
     giverName() {
       const giver = this.players.find(player => player.isGiver)
       return { ...giver }.name
@@ -257,19 +248,39 @@ export default {
       const accumulator = this.players.find(player => player.isYesNoer)
       return { ...accumulator }.name
     },
-    canPass() {
-      let canPass = false
-      //TODOforEachじゃなくてもかけるかな
-      this.players.forEach(player => {
-        canPass = canPass || player.canbeNominated
-      })
-      return canPass
+    isPassable() {
+      const reducer = (accumulator, currentValue) =>
+        accumulator.canbeNominated || currentValue.canbeNominated
+      return this.players.reduce(reducer)
     },
   },
 
   methods: {
     ...mapActions('basics', ['fetchBasics']),
-    test() {},
+
+    //デバッグ用
+    async test() {
+      const user = await this.$auth()
+      console.log(user.uid)
+    },
+    initializeRoom() {
+      const roomData = {
+        minNumber: 2,
+        maxNumber: 6,
+        currentNumber: 0,
+        createdAt: this.$firebase.firestore.FieldValue.serverTimestamp(),
+      }
+      const progressData = {
+        phase: 'waiting',
+        declare: null,
+        turn: 0,
+      }
+      const roomDoc = this.$firestore.doc(`/rooms/${this.roomId}`)
+      const progressDoc = this.$firestore.doc(`rooms/${this.roomId}/progress/progDoc`)
+      roomDoc.update(roomData)
+      progressDoc.update(progressData)
+    },
+
     left(i) {
       return i * 44
     },
@@ -296,8 +307,13 @@ export default {
     accumulationsClear() {
       while (this.accumulationIds.length) this.accumulationIds.pop() //配列の中身削除
     },
+    // プレイヤー選択
+    selectAcceptor(playerId) {
+      this.acceptorId = playerId
+    },
+
     // ゲーム参加
-    join() {
+    async join() {
       const playerData = {
         name: this.uname,
         isGiver: false,
@@ -313,28 +329,36 @@ export default {
         alert('waitingフェーズではありません')
         return
       }
-      this.$firestore.doc(`rooms/${this.roomId}/players/${this.uid}`).set(playerData)
+      try {
+        await this.$firestore.doc(`rooms/${this.roomId}/players/${this.uid}`).set(playerData)
+      } catch (e) {
+        alert(e.message)
+      }
     },
+
     // 自分のisReadyフラグをinvert -> functioins発火
     async ready() {
-      const playerDoc = this.$firestore.doc(`/rooms/${this.roomId}/players/${this.uid}`)
-      // isReadyをinvertしてからgameStart関数を呼ぶ
-      await playerDoc.get().then(doc => {
-        playerDoc.update({
-          isReady: !doc.data().isReady,
-        })
-      })
       const gameStart = this.$fireFunc.httpsCallable('gameStart')
-      gameStart(this.roomId)
+      const playerRef = this.$firestore.doc(`/rooms/${this.roomId}/players/${this.uid}`)
+      // isReadyをinvertしてからgameStart関数を呼ぶ
+      try {
+        const playerSnap = await playerRef.get()
+        await playerRef.update({ isReady: !playerSnap.data().isReady })
+        await gameStart(this.roomId)
+      } catch (e) {
+        alert(e.message)
+      }
     },
-    surrender() {
+    async surrender() {
       const surrender = this.$fireFunc.httpsCallable('surrender')
-      surrender(this.roomId)
+      try {
+        await surrender(this.roomId)
+      } catch (e) {
+        alert(e.message)
+      }
     },
-    // プレイヤー選択
-    selectAcceptor(playerId) {
-      this.acceptorId = playerId
-    },
+
+    // 宣言し、カードを渡す
     give() {
       // 【バリデーション】細かいのはFunctionsでするため、事物/宣言/相手プレイヤーの選択を確認
       const acceptor = this.players.find(player => player.id === this.acceptorId)
@@ -346,6 +370,8 @@ export default {
       const give = this.$fireFunc.httpsCallable('give')
       give(this.submission)
     },
+
+    //pass後のgive
     async giveOfPass() {
       // 【バリデーション】細かいのはFunctionsでするため、事物/宣言/相手プレイヤーの選択を確認
       const acceptor = this.players.find(player => player.id === this.acceptorId)
@@ -355,83 +381,87 @@ export default {
         return
       }
       const giveOfPass = this.$fireFunc.httpsCallable('giveOfPass')
-      await giveOfPass(this.submissionOfPass)
-    },
-    initializeRoom() {
-      const roomData = {
-        minNumber: 2,
-        maxNumber: 6,
-        currentNumber: 0,
-        createdAt: this.$firebase.firestore.FieldValue.serverTimestamp(),
+      try {
+        await giveOfPass(this.submissionOfPass)
+      } catch (e) {
+        alert(e.message)
       }
-      const progressData = {
-        phase: 'waiting',
-        declare: null,
-        turn: 0,
-      }
-      const roomDoc = this.$firestore.doc(`/rooms/${this.roomId}`)
-      const progressDoc = this.$firestore.doc(`rooms/${this.roomId}/progress/progDoc`)
-      roomDoc.update(roomData)
-      progressDoc.update(progressData)
     },
-    answer(ans) {
+
+    //回答
+    async answer(ans) {
       const answer = this.$fireFunc.httpsCallable('answer')
       const dataSet = {
         roomId: this.roomId,
         ans: ans,
       }
-      answer(dataSet)
+      try {
+        await answer(dataSet)
+      } catch (e) {
+        alert(e.message)
+      }
     },
-    pass() {
+
+    //パス
+    async pass() {
       if (this.phase !== 'accept' || !this.me.isAcceptor) {
         alert('acceptフェーズではない、又はあなたはacceptorではありません')
       }
       const pass = this.$fireFunc.httpsCallable('pass')
-      pass(this.roomId)
+      try {
+        await pass(this.roomId)
+      } catch (e) {
+        alert(e.message)
+      }
     },
 
-    accumulate() {
+    // yesnoフェーズで溜める処理
+    async accumulate() {
       const accumulate = this.$fireFunc.httpsCallable('accumulate')
       const declare = this.progress.declare
-      let includeYesNo = false //提出カードにyes/noが含まれていないか
 
-      const accumulations = [] //溜める用カード1~2枚
-      //accumulationIdsからaccumulationを作成
+      //accumulationIdsからaccumulations(溜めるカード1~2枚)を作成
+      const accumulations = []
       this.accumulationIds.forEach(accumulationId => {
         const obj = this.hand.find(card => {
           return card.id === accumulationId
         })
-        accumulations.push(obj)
+        if (obj) accumulations.push(obj)
       })
+
+      // accumulateで必要な情報セット
+      const submission = {
+        roomId: this.roomId,
+        accumulations: accumulations,
+        declare: this.progress.declare,
+        phase: this.phase,
+      }
 
       if (!accumulations.length) {
         alert('溜めるカードを選択してください')
         return
       }
-      if (this.progress.phase !== 'yesno') {
-        alert('yesnoフェーズではありません')
-        return
-      }
-      if (accumulations.length < 1 || accumulations.length > 2) {
-        alert('宣言と同じカードであれば1枚、同じでなければ2枚出してください')
-        return
-      }
-      //todoここでエラー発生 typeが無いとのこと 選択しても選択してなくてもでる
-      //todo 1枚選択時、2枚目がundefined、何も選択してない時1枚目のみundefined
-      console.log(accumulations) //todokesu
+
+      //提出カードにyes/noが含まれていないか
+      let includeYesNo = false
       accumulations.forEach(accumulation => {
-        const flag = accumulation.type === 'yes' || accumulation.type === 'no'
-        includeYesNo = includeYesNo || flag
+        includeYesNo = includeYesNo || accumulation.type === 'yes' || accumulation.type === 'no'
       })
+
       if (includeYesNo) {
         alert('yes/noは選択できません')
         return
       }
+
       //1枚提出
       if (accumulations.length < 2) {
         if (declare === 'king') {
           if (accumulations[0].type === 'king') {
-            accumulate(this.submissionOfAccumulate)
+            try {
+              await accumulate(submission)
+            } catch (e) {
+              alert(e.message)
+            }
             return
           } else {
             alert('1枚のキングを溜めるか、キング以外で2枚溜めてください')
@@ -439,7 +469,12 @@ export default {
           }
         } else {
           if (accumulations[0].species === declare) {
-            accumulate(this.submissionOfAccumulate)
+            // 1枚溜めでは大体ここに誘導される
+            try {
+              await accumulate(submission)
+            } catch (e) {
+              alert(e.message)
+            }
             return
           } else {
             alert('宣言された物と同じ厄介者を溜めてください')
@@ -450,14 +485,22 @@ export default {
         //2枚提出
         if (declare === 'king') {
           if (accumulations[0].type !== declare && accumulations[1].type !== declare) {
-            accumulate(this.submissionOfAccumulate)
+            try {
+              await accumulate(submission)
+            } catch (e) {
+              alert(e.message)
+            }
             return
           } else {
             alert('2枚溜める場合は、宣言と違う厄介者を溜めてください')
           }
         } else {
           if (accumulations[0].species !== declare && accumulations[1].species !== declare) {
-            accumulate(this.submissionOfAccumulate)
+            try {
+              await accumulate(submission)
+            } catch (e) {
+              alert(e.message)
+            }
             return
           } else {
             alert('2枚溜める場合は、宣言と違う厄介者を溜めてください')
@@ -483,32 +526,23 @@ $basic: #0f0e17;
   margin: 0 5px 0 0;
 }
 .body {
-  box-sizing: border-box;
-  height: 80vh;
+  background-image: url('https://firebasestorage.googleapis.com/v0/b/gokipo-d9c62.appspot.com/o/room-background%2F074DFCE1-710B-4C74-8277-8F39B79A3C20-451-000000166E74D10B.JPG?alt=media&token=218772db-4a28-40cb-b052-d0d564fa1d35');
+  background-size: cover;
+  background-attachment: fixed;
+  min-height: 100vh;
+  padding-top: 90px;
 }
 .player {
   width: 330px;
   margin: 20px;
 }
-.game-table {
-  width: 800px;
-  height: 320px;
-  border: 1px solid #fffffe;
-  margin: auto;
-  display: flex;
-  p {
-    line-height: 10px;
-    font-size: 15px;
-  }
-}
+
 .buttons {
   margin: 0 auto;
   width: 500px;
   display: flex;
 }
-.debugs {
-  display: flex;
-}
+
 .me {
   background: #333;
 }
@@ -637,5 +671,21 @@ select {
 ::v-deep img {
   height: 80%;
   width: 90%;
+}
+
+//デバッグ用
+.game-table {
+  max-width: 800px;
+  height: 320px;
+  border: 1px solid #fffffe;
+  margin: auto;
+  display: flex;
+  p {
+    line-height: 10px;
+    font-size: 15px;
+  }
+}
+.debugs {
+  display: flex;
 }
 </style>
