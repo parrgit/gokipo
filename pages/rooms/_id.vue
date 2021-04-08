@@ -29,6 +29,8 @@
                 }"
                 style="user-select:none;"
               >
+                <!-- TODO消すisOnline -->
+                <span v-show="isOnlineArr[player.id]">💡</span>
                 {{ player.name }}
               </p>
               <!-- セリフ -->
@@ -160,6 +162,35 @@
         </button>
       </div>
     </div>
+    <!-- ==================== debug tools ==================== -->
+    <hr />
+    <h2>for debug</h2>
+
+    <div class="debugs">
+      <button @click="initializeRoom">ルーム初期化用(2021/3/4)</button>
+      <button @click="test">test</button>
+    </div>
+    <div class="game-table">
+      <button
+        v-for="player in players"
+        :key="player.id"
+        @click="selectAcceptor(player.id)"
+        :class="['player', { me: player.id === uid }]"
+        :disabled="player.id === uid"
+      >
+        <!-- <p>id: {{ player.id }}</p> -->
+        <p>name: {{ player.name }}</p>
+        <p :class="{ isActive: player.isReady }">isReady: {{ player.isReady }}</p>
+        <p :class="{ isActive: player.isAcceptor }">isAcceptor: {{ player.isAcceptor }}</p>
+        <p :class="{ isActive: player.isYesNoer }">isYesNoer: {{ player.isYesNoer }}</p>
+        <p :class="{ isActive: player.isGiver }">isGiver: {{ player.isGiver }}</p>
+        <p :class="{ isActive: !player.canbeNominated }">
+          canbeNominated: {{ player.canbeNominated }}
+        </p>
+        <p>isLoser: {{ player.isLoser }}</p>
+        <p>handNum: {{ player.handNum }}</p>
+      </button>
+    </div>
   </div>
 </template>
 
@@ -167,7 +198,6 @@
 import { mapActions, mapGetters } from 'vuex'
 
 export default {
-  middleware: ['checkAuth'],
   data() {
     return {
       accumulationIds: [],
@@ -181,6 +211,8 @@ export default {
     }
   },
 
+  middleware: ['checkAuth'],
+
   async created() {
     const user = await this.$auth()
     await this.fetchBasics({ roomId: this.roomId, uid: user.uid })
@@ -188,7 +220,15 @@ export default {
 
   computed: {
     ...mapGetters('user', ['uname', 'uid']),
-    ...mapGetters('basics', ['phase', 'players', 'hand', 'progress', 'penaltyTop', 'secretReal']),
+    ...mapGetters('basics', [
+      'phase',
+      'players',
+      'hand',
+      'progress',
+      'penaltyTop',
+      'secretReal',
+      'isOnlineArr',
+    ]),
     isHand() {
       return this.hand.length !== 0 //手札あり
     },
@@ -260,8 +300,7 @@ export default {
 
     //デバッグ用
     async test() {
-      const user = await this.$auth()
-      console.log(user.uid)
+      console.log(this.players)
     },
     initializeRoom() {
       const roomData = {
@@ -367,6 +406,7 @@ export default {
         alert('提出カード・宣言・受け手プレイヤーを確認してください')
         return
       }
+      this.$store.commit('basics/changePhase', 'accept')
       const give = this.$fireFunc.httpsCallable('give')
       give(this.submission)
     },

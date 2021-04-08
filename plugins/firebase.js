@@ -15,11 +15,11 @@ export default ({ app }, inject) => {
   inject('firestore', firebase.firestore())
   inject('fireAuth', firebase.auth())
   inject('fireStorage', firebase.storage())
-  // inject('fireFunc', firebase.app().functions('asia-northeast1'))
-  inject('fireFunc', firebase.functions())
+  inject('fireFunc', firebase.app().functions('asia-northeast1'))
+  // inject('fireFunc', firebase.functions())
   inject('fireReal', firebase.database())
 }
 
 // TODO最終的に治す
-const functions = firebase.functions()
-functions.useFunctionsEmulator('http://localhost:5000')
+// const functions = firebase.functions()
+// functions.useFunctionsEmulator('http://localhost:5000')

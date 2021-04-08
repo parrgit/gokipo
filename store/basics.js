@@ -5,6 +5,7 @@ export const state = () => ({
   players: [],
   hand: [],
   secretReal: {},
+  isOnlineArr: {},
 })
 
 export const getters = {
@@ -15,6 +16,7 @@ export const getters = {
   progress: state => state.progress,
   penaltyTop: state => state.penaltyTop,
   secretReal: state => state.secretReal,
+  isOnlineArr: state => state.isOnlineArr,
 }
 
 export const mutations = {
@@ -32,6 +34,17 @@ export const mutations = {
   },
   addPenaltyTop(state, penaltyTop) {
     state.penaltyTop = penaltyTop
+  },
+  //体感速度高速化用
+  changePhase(state, phase) {
+    if (state.progress) state.progress.phase = phase
+  },
+
+  //players.stateにonline/offlineを保存
+  addIsOnline(state, data) {
+    data.forEach(player => {
+      state.isOnlineArr[player.id] = player.data().internet === 'online'
+    })
   },
 
   addBurden(state, playerDash) {
@@ -68,16 +81,16 @@ export const mutations = {
 
 export const actions = {
   async fetchBasics({ commit }, { roomId, uid }) {
-    const roomDoc = this.$firestore.doc(`rooms/${roomId}`)
-    const progressDoc = this.$firestore.doc(`rooms/${roomId}/progress/progDoc`)
-    const playersCol = this.$firestore.collection(`rooms/${roomId}/players`)
-    const invPlayerRef = this.$firestore.doc(`rooms/${roomId}/invPlayers/${uid}`)
-    const handCol = this.$firestore.collection(`rooms/${roomId}/invPlayers/${uid}/hand`)
-    const penaltyTopDoc = this.$firestore.doc(`rooms/${roomId}/penaltyTop/penaDoc`)
+    const roomRef = this.$firestore.doc(`/rooms/${roomId}`)
+    const progressRef = this.$firestore.doc(`/rooms/${roomId}/progress/progDoc`)
+    const playersRef = this.$firestore.collection(`/rooms/${roomId}/players`)
+    const invPlayerRef = this.$firestore.doc(`/rooms/${roomId}/invPlayers/${uid}`)
+    const handRef = this.$firestore.collection(`/rooms/${roomId}/invPlayers/${uid}/hand`)
+    const penaltyTopRef = this.$firestore.doc(`/rooms/${roomId}/penaltyTop/penaDoc`)
+    const statusRef = this.$firestore.collection('/status')
 
-    //TODODoc->Refの方が可読性up
     //roomをフェッチ
-    roomDoc.onSnapshot(doc => {
+    roomRef.onSnapshot(doc => {
       const roomInfo = {
         roomId: doc.id,
         ...doc.data(),
@@ -86,7 +99,7 @@ export const actions = {
     })
     // playersをフェッチ
     // players.burdenをフェッチ
-    playersCol.onSnapshot(async snapshot => {
+    playersRef.onSnapshot(async snapshot => {
       commit('resetPlayers')
       snapshot.forEach(async doc => {
         //player[]に保存
@@ -99,11 +112,11 @@ export const actions = {
       })
     })
     //progressをフェッチ
-    progressDoc.onSnapshot(doc => {
+    progressRef.onSnapshot(doc => {
       commit('addProgress', doc.data())
     })
     //【自分の】handの初期化、フェッチ
-    handCol.orderBy('species').onSnapshot(col => {
+    handRef.orderBy('species').onSnapshot(col => {
       commit('resetHand')
       col.forEach(doc => {
         const card = {
@@ -115,7 +128,7 @@ export const actions = {
       })
     })
     //penaltyをフェッチ
-    penaltyTopDoc.onSnapshot(doc => {
+    penaltyTopRef.onSnapshot(doc => {
       let penaltyTop = {}
       if (doc.data()) {
         penaltyTop = {
@@ -140,6 +153,12 @@ export const actions = {
         const secretReal = doc.data().secretReal
         commit('addSecretReal', secretReal)
       }
+    })
+
+    //statusをフェッチ
+    statusRef.onSnapshot(snapshot => {
+      if (!snapshot.docs) return
+      commit('addIsOnline', snapshot.docs)
     })
   },
 }
