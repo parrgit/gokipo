@@ -1,13 +1,18 @@
 export default async ({ app }) => {
   // Fetch the current user's ID from Firebase Authentication.
-  let uid
-  app.$fireAuth.onAuthStateChanged(function(user) {
-    if (user) {
-      uid = user.uid
-    } else {
-      return
-    }
-  })
+
+  function auth() {
+    return new Promise(resolve => {
+      app.$fireAuth.onAuthStateChanged(auth => {
+        resolve(auth || null)
+      })
+    })
+  }
+  
+  const user = await auth()
+  if (!user) return
+  const uid = user.uid || null
+  if (!uid) return
 
   // Create a reference to this user's specific status node.
   // This is where we will store data about being online/offline.
