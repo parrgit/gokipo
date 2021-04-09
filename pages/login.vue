@@ -69,7 +69,7 @@
             {{ errors[0] }}
           </p>
         </validation-provider>
-        <button type="submit" :disabled="invalid">Singup with email</button>
+        <button type="submit" :disabled="invalid">Signup with email</button>
       </ValidationObserver>
     </div>
   </div>
