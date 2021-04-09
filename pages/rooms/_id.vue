@@ -398,7 +398,9 @@ export default {
     },
 
     // 宣言し、カードを渡す
-    give() {
+    async give() {
+      this.$nuxt.$loading.start()
+
       // 【バリデーション】細かいのはFunctionsでするため、事物/宣言/相手プレイヤーの選択を確認
       const acceptor = this.players.find(player => player.id === this.acceptorId)
       const isContinuable = this.real && this.declare && this.acceptorId && acceptor.canbeNominated
@@ -406,9 +408,10 @@ export default {
         alert('提出カード・宣言・受け手プレイヤーを確認してください')
         return
       }
-      this.$store.commit('basics/changePhase', 'accept')
       const give = this.$fireFunc.httpsCallable('give')
-      give(this.submission)
+      await give(this.submission)
+
+      this.$nuxt.$loading.finish()
     },
 
     //pass後のgive
@@ -430,6 +433,8 @@ export default {
 
     //回答
     async answer(ans) {
+      this.$nuxt.$loading.start()
+
       const answer = this.$fireFunc.httpsCallable('answer')
       const dataSet = {
         roomId: this.roomId,
@@ -437,7 +442,9 @@ export default {
       }
       try {
         await answer(dataSet)
+        this.$nuxt.$loading.finish()
       } catch (e) {
+        this.$nuxt.$loading.finish()
         alert(e.message)
       }
     },

@@ -36,9 +36,9 @@ export const mutations = {
     state.penaltyTop = penaltyTop
   },
   //体感速度高速化用
-  changePhase(state, phase) {
-    if (state.progress) state.progress.phase = phase
-  },
+  // changePhase(state, phase) {
+  //   if (state.progress) state.progress.phase = phase
+  // },
 
   //players.stateにonline/offlineを保存
   addIsOnline(state, data) {

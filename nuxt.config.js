@@ -70,4 +70,15 @@ export default {
       }),
     ],
   },
+
+  loading: {
+    color: 'blue',
+    height: '5px',
+  },
+  
+  loadingIndicator: {
+    name: 'circle',
+    color: 'red',
+    background: 'white',
+  },
 }
