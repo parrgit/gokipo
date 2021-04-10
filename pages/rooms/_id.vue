@@ -26,11 +26,10 @@
                   canbeNominated: !player.canbeNominated,
                   ready: player.isReady && phase === 'waiting',
                   loser: player.isLoser,
+                  offline: !isOnlineObj[player.id],
                 }"
                 style="user-select:none;"
               >
-                <!-- TODO消すisOnline -->
-                <span v-show="isOnlineArr[player.id]">💡</span>
                 {{ player.name }}
               </p>
               <!-- セリフ -->
@@ -227,7 +226,7 @@ export default {
       'progress',
       'penaltyTop',
       'secretReal',
-      'isOnlineArr',
+      'isOnlineObj', //ネストされてるから？変更を検知できない
     ]),
     isHand() {
       return this.hand.length !== 0 //手札あり
@@ -377,6 +376,8 @@ export default {
 
     // 自分のisReadyフラグをinvert -> functioins発火
     async ready() {
+      this.$nuxt.$loading.start()
+
       const gameStart = this.$fireFunc.httpsCallable('gameStart')
       const playerRef = this.$firestore.doc(`/rooms/${this.roomId}/players/${this.uid}`)
       // isReadyをinvertしてからgameStart関数を呼ぶ
@@ -384,17 +385,22 @@ export default {
         const playerSnap = await playerRef.get()
         await playerRef.update({ isReady: !playerSnap.data().isReady })
         await gameStart(this.roomId)
+
+        this.$nuxt.$loading.finish()
       } catch (e) {
         alert(e.message)
+        this.$nuxt.$loading.finish()
       }
     },
     async surrender() {
+      this.$nuxt.$loading.start()
       const surrender = this.$fireFunc.httpsCallable('surrender')
       try {
         await surrender(this.roomId)
       } catch (e) {
         alert(e.message)
       }
+      this.$nuxt.$loading.finish()
     },
 
     // 宣言し、カードを渡す
@@ -406,6 +412,7 @@ export default {
       const isContinuable = this.real && this.declare && this.acceptorId && acceptor.canbeNominated
       if (!isContinuable) {
         alert('提出カード・宣言・受け手プレイヤーを確認してください')
+        this.$nuxt.$loading.finish()
         return
       }
       const give = this.$fireFunc.httpsCallable('give')
@@ -416,11 +423,13 @@ export default {
 
     //pass後のgive
     async giveOfPass() {
+      this.$nuxt.$loading.start()
       // 【バリデーション】細かいのはFunctionsでするため、事物/宣言/相手プレイヤーの選択を確認
       const acceptor = this.players.find(player => player.id === this.acceptorId)
       const isContinuable = this.declare && this.acceptorId && acceptor.canbeNominated
       if (!isContinuable) {
         alert('宣言、受け手を選択してください')
+        this.$nuxt.$loading.finish()
         return
       }
       const giveOfPass = this.$fireFunc.httpsCallable('giveOfPass')
@@ -429,6 +438,7 @@ export default {
       } catch (e) {
         alert(e.message)
       }
+      this.$nuxt.$loading.finish()
     },
 
     //回答
@@ -442,17 +452,20 @@ export default {
       }
       try {
         await answer(dataSet)
-        this.$nuxt.$loading.finish()
       } catch (e) {
-        this.$nuxt.$loading.finish()
         alert(e.message)
       }
+
+      this.$nuxt.$loading.finish()
     },
 
     //パス
     async pass() {
+      this.$nuxt.$loading.start()
       if (this.phase !== 'accept' || !this.me.isAcceptor) {
-        alert('acceptフェーズではない、又はあなたはacceptorではありません')
+        alert('acceptフェーズでない、又はあなたはacceptorではありません')
+        this.$nuxt.$loading.finish()
+        return
       }
       const pass = this.$fireFunc.httpsCallable('pass')
       try {
@@ -460,10 +473,13 @@ export default {
       } catch (e) {
         alert(e.message)
       }
+      this.$nuxt.$loading.finish()
     },
 
     // yesnoフェーズで溜める処理
     async accumulate() {
+      this.$nuxt.$loading.start()
+
       const accumulate = this.$fireFunc.httpsCallable('accumulate')
       const declare = this.progress.declare
 
@@ -486,6 +502,7 @@ export default {
 
       if (!accumulations.length) {
         alert('溜めるカードを選択してください')
+        this.$nuxt.$loading.finish()
         return
       }
 
@@ -494,9 +511,9 @@ export default {
       accumulations.forEach(accumulation => {
         includeYesNo = includeYesNo || accumulation.type === 'yes' || accumulation.type === 'no'
       })
-
       if (includeYesNo) {
         alert('yes/noは選択できません')
+        this.$nuxt.$loading.finish()
         return
       }
 
@@ -509,10 +526,8 @@ export default {
             } catch (e) {
               alert(e.message)
             }
-            return
           } else {
             alert('1枚のキングを溜めるか、キング以外で2枚溜めてください')
-            return
           }
         } else {
           if (accumulations[0].species === declare) {
@@ -522,10 +537,8 @@ export default {
             } catch (e) {
               alert(e.message)
             }
-            return
           } else {
-            alert('宣言された物と同じ厄介者を溜めてください')
-            return
+            alert('1枚溜める場合は、宣言されたカードを溜めてください')
           }
         }
       } else {
@@ -537,9 +550,8 @@ export default {
             } catch (e) {
               alert(e.message)
             }
-            return
           } else {
-            alert('2枚溜める場合は、宣言と違う厄介者を溜めてください')
+            alert('2枚溜める場合は、宣言と違うカードを溜めてください')
           }
         } else {
           if (accumulations[0].species !== declare && accumulations[1].species !== declare) {
@@ -548,12 +560,12 @@ export default {
             } catch (e) {
               alert(e.message)
             }
-            return
           } else {
-            alert('2枚溜める場合は、宣言と違う厄介者を溜めてください')
+            alert('2枚溜める場合は、宣言と違うカードを溜めてください')
           }
         }
       }
+      this.$nuxt.$loading.finish()
     },
   },
 }
@@ -718,6 +730,9 @@ select {
 ::v-deep img {
   height: 80%;
   width: 90%;
+}
+.offline {
+  color: hsl(0, 20%, 30%);
 }
 
 //デバッグ用

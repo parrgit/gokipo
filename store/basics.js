@@ -5,7 +5,7 @@ export const state = () => ({
   players: [],
   hand: [],
   secretReal: {},
-  isOnlineArr: {},
+  isOnlineObj: {},
 })
 
 export const getters = {
@@ -16,7 +16,7 @@ export const getters = {
   progress: state => state.progress,
   penaltyTop: state => state.penaltyTop,
   secretReal: state => state.secretReal,
-  isOnlineArr: state => state.isOnlineArr,
+  isOnlineObj: state => state.isOnlineObj,
 }
 
 export const mutations = {
@@ -42,9 +42,14 @@ export const mutations = {
 
   //players.stateにonline/offlineを保存
   addIsOnline(state, data) {
+    //objectの(key:data)のdataが変更されても、ネストされたものはcomputedで検知できないため
+    //templateにリアクティブではなくなってしまう。→object自体を書き換える
+    let obj = {}
     data.forEach(player => {
-      state.isOnlineArr[player.id] = player.data().internet === 'online'
+      obj[player.id] = player.data().internet === 'online'
     })
+    console.log(obj)
+    state.isOnlineObj = obj
   },
 
   addBurden(state, playerDash) {
