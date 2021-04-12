@@ -290,9 +290,11 @@ export default {
       return { ...accumulator }.name
     },
     isPassable() {
-      const reducer = (accumulator, currentValue) =>
-        accumulator.canbeNominated || currentValue.canbeNominated
-      return this.players.reduce(reducer)
+      const reducer = (accumulator, currentValue) => {
+        //initialValueと同じ型で返す→obj.canbeNominated
+        return { canbeNominated: accumulator.canbeNominated || currentValue.canbeNominated }
+      }
+      return this.players.reduce(reducer).canbeNominated
     },
   },
 
@@ -332,8 +334,7 @@ export default {
       return -40 + 2.4 * i
     },
     top(i, handNum) {
-      // return Math.pow(this.deg(i) * 0.1, 2)
-      return 0.13 * Math.pow(i - handNum / 2, 2) //TODOいまここ
+      return 0.13 * Math.pow(i - handNum / 2, 2)
     },
     burdenBottom(i) {
       return i * 6

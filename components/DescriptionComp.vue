@@ -6,7 +6,7 @@
     </span>
     <span v-show="phase === 'give' && !me.isGiver">出し手がカードを提出しています</span>
     <span v-show="phase === 'accept' && me.isAcceptor">
-      回答してください
+      回答を選択してください
     </span>
     <span v-show="phase === 'accept' && !me.isAcceptor">
       受け手が回答しています
