@@ -48,7 +48,6 @@ export const mutations = {
     data.forEach(player => {
       obj[player.id] = player.data().internet === 'online'
     })
-    console.log(obj)
     state.isOnlineObj = obj
   },
 

@@ -6,6 +6,7 @@
     :class="[
       'dashed animate__animated animate__fadeIn animate__repeat-2',
       {
+        common: secretReal.type === 'common',
         king: secretReal.type === 'king',
         yesno: secretReal.type === 'yes' || secretReal.type === 'no',
       },

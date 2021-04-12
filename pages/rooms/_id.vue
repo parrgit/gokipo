@@ -45,7 +45,7 @@
                   :style="{
                     position: 'absolute',
                     left: otherLeft(i) + 'px',
-                    top: top(i) + 'px',
+                    top: top(i, player.handNum) + 'px',
                     transform: `rotate(${deg(i)}deg)`,
                   }"
                   class="others-hand"
@@ -94,6 +94,8 @@
               <div v-for="(value, key) in me.burden" :key="key" :style="{ position: 'relative' }">
                 <burden-card v-for="(card, i) in value" :key="card.id" :card="card" :i="i" />
               </div>
+              <!-- 説明ゾーン -->
+              <description-comp :phase="phase" :me="me" />
             </div>
           </div>
           <!-- ------------- MY HAND ------------- -->
@@ -226,7 +228,7 @@ export default {
       'progress',
       'penaltyTop',
       'secretReal',
-      'isOnlineObj', //ネストされてるから？変更を検知できない
+      'isOnlineObj',
     ]),
     isHand() {
       return this.hand.length !== 0 //手札あり
@@ -298,9 +300,7 @@ export default {
     ...mapActions('basics', ['fetchBasics']),
 
     //デバッグ用
-    async test() {
-      console.log(this.players)
-    },
+    async test() {},
     initializeRoom() {
       const roomData = {
         minNumber: 2,
@@ -331,8 +331,9 @@ export default {
     deg(i) {
       return -40 + 2.4 * i
     },
-    top(i) {
-      return Math.pow(this.deg(i) * 0.1, 2)
+    top(i, handNum) {
+      // return Math.pow(this.deg(i) * 0.1, 2)
+      return 0.13 * Math.pow(i - handNum / 2, 2) //TODOいまここ
     },
     burdenBottom(i) {
       return i * 6
@@ -573,60 +574,39 @@ export default {
 
 <style lang="scss" scoped>
 $basic: #0f0e17;
+$backOfCard: hsl(220, 40%, 17%);
+//=============================== card =================================
 @mixin card {
+  // バックグラウンドは.common, .king, .yesnoで設定
   height: 70px;
   width: 40px;
   border-radius: 3px;
-  border: 1px solid lighten($basic, 75%);
+  border: 1px solid hsl(40, 20%, 48%);
   font-size: 15px;
   display: grid;
   place-items: center;
   padding: 0;
   margin: 0 5px 0 0;
 }
-.body {
-  background-image: url('https://firebasestorage.googleapis.com/v0/b/gokipo-d9c62.appspot.com/o/room-background%2F074DFCE1-710B-4C74-8277-8F39B79A3C20-451-000000166E74D10B.JPG?alt=media&token=218772db-4a28-40cb-b052-d0d564fa1d35');
-  background-size: cover;
-  background-attachment: fixed;
-  min-height: 100vh;
-  padding-top: 90px;
+//card colors of front
+.king {
+  background: hsl(60, 90%, 28%) !important;
 }
-.player {
-  width: 330px;
-  margin: 20px;
+.yesno {
+  background: hsl(200, 90%, 24%) !important;
 }
-
-.buttons {
-  margin: 0 auto;
-  width: 500px;
-  display: flex;
+.common {
+  background: hsl(40, 10%, 15%) !important;
 }
-
-.me {
-  background: #333;
-}
-.isActive {
-  color: red;
-}
-select {
-  margin: auto;
-  display: block;
-  background: $basic;
-  color: white;
-  border: 1px solid white;
-  padding: 10px 10px;
-  border-radius: 3px;
-}
-.table-container {
-  width: 800px;
-  margin: 0 auto;
-}
-.name-zone {
-  display: flex;
-  margin-bottom: 30px;
-  p:nth-child(n + 2) {
-    padding-left: 10px;
-    color: red;
+//card color of back
+.others-card-zone-hand {
+  position: relative;
+  height: 100px;
+  .others-hand {
+    background: $backOfCard;
+  }
+  div {
+    @include card;
   }
 }
 .my-card-zone-hand {
@@ -647,18 +627,7 @@ select {
     border: none; //ここは各種speciesのゾーン確保箇所なのでnone
     div {
       @include card;
-      border: 1px solid white;
     }
-  }
-}
-.others-card-zone-hand {
-  position: relative;
-  height: 100px;
-  .others-hand {
-    background: black;
-  }
-  div {
-    @include card;
   }
 }
 .others-card-zone-burden {
@@ -680,21 +649,61 @@ select {
   margin: 0 auto;
   div {
     @include card;
-    background: black;
+    background: $backOfCard;
   }
 }
 .selectedInHand {
   border: 2px solid hsl(90, 100%, 60%) !important;
 }
-.king {
-  background: hsl(60, 90%, 28%) !important;
+
+//=============================== カード以外 =================================
+.body {
+  background-image: url('https://firebasestorage.googleapis.com/v0/b/gokipo-d9c62.appspot.com/o/room-background%2F074DFCE1-710B-4C74-8277-8F39B79A3C20-451-000000166E74D10B.JPG?alt=media&token=218772db-4a28-40cb-b052-d0d564fa1d35');
+  background-size: cover;
+  background-attachment: fixed;
+  min-height: 100vh;
+  padding-top: 90px;
 }
-.yesno {
-  background: hsl(200, 90%, 24%) !important;
+.player {
+  width: 330px;
+  margin: 20px;
 }
-.common {
-  background: lighten($basic, 28%) !important;
+.buttons {
+  margin: 0 auto;
+  width: 500px;
+  display: flex;
 }
+.me {
+  background: #333;
+}
+
+select {
+  margin: auto;
+  display: block;
+  background: $basic;
+  color: white;
+  border: 1px solid white;
+  padding: 10px 10px;
+  border-radius: 3px;
+}
+.table-container {
+  width: 800px;
+  margin: 0 auto;
+}
+.name-zone {
+  display: flex;
+  margin-bottom: 10px;
+  p {
+    height: 1em;
+    margin: 0;
+  }
+  //セリフ
+  p:nth-child(n + 2) {
+    padding-left: 10px;
+    color: red;
+  }
+}
+
 .progress {
   width: 600px;
   height: 30px;
@@ -717,8 +726,8 @@ select {
 .loser {
   background: red;
 }
-.active {
-  background: lighten($basic, 20%);
+.isActive {
+  color: red;
 }
 .ready {
   background: lightcoral;
