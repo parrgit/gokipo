@@ -26,6 +26,7 @@
                   canbeNominated: !player.canbeNominated,
                   ready: player.isReady && phase === 'waiting',
                   loser: player.isLoser,
+                  offline: !isOnlineObj[player.id],
                 }"
                 style="user-select:none;"
               >
@@ -44,7 +45,7 @@
                   :style="{
                     position: 'absolute',
                     left: otherLeft(i) + 'px',
-                    top: top(i) + 'px',
+                    top: top(i, player.handNum) + 'px',
                     transform: `rotate(${deg(i)}deg)`,
                   }"
                   class="others-hand"
@@ -93,6 +94,8 @@
               <div v-for="(value, key) in me.burden" :key="key" :style="{ position: 'relative' }">
                 <burden-card v-for="(card, i) in value" :key="card.id" :card="card" :i="i" />
               </div>
+              <!-- 説明ゾーン -->
+              <description-comp :phase="phase" :me="me" />
             </div>
           </div>
           <!-- ------------- MY HAND ------------- -->
@@ -167,7 +170,6 @@
 import { mapActions, mapGetters } from 'vuex'
 
 export default {
-  middleware: ['checkAuth'],
   data() {
     return {
       accumulationIds: [],
@@ -181,6 +183,8 @@ export default {
     }
   },
 
+  middleware: ['checkAuth'],
+
   async created() {
     const user = await this.$auth()
     await this.fetchBasics({ roomId: this.roomId, uid: user.uid })
@@ -188,7 +192,15 @@ export default {
 
   computed: {
     ...mapGetters('user', ['uname', 'uid']),
-    ...mapGetters('basics', ['phase', 'players', 'hand', 'progress', 'penaltyTop', 'secretReal']),
+    ...mapGetters('basics', [
+      'phase',
+      'players',
+      'hand',
+      'progress',
+      'penaltyTop',
+      'secretReal',
+      'isOnlineObj',
+    ]),
     isHand() {
       return this.hand.length !== 0 //手札あり
     },
@@ -249,9 +261,11 @@ export default {
       return { ...accumulator }.name
     },
     isPassable() {
-      const reducer = (accumulator, currentValue) =>
-        accumulator.canbeNominated || currentValue.canbeNominated
-      return this.players.reduce(reducer)
+      const reducer = (accumulator, currentValue) => {
+        //initialValueと同じ型で返す→obj.canbeNominated
+        return { canbeNominated: accumulator.canbeNominated || currentValue.canbeNominated }
+      }
+      return this.players.reduce(reducer).canbeNominated
     },
   },
 
@@ -260,8 +274,8 @@ export default {
 
     //デバッグ用
     async test() {
-      const user = await this.$auth()
-      console.log(user.uid)
+      const test = this.$fireFunc.httpsCallable('test')
+      await test()
     },
     initializeRoom() {
       const roomData = {
@@ -293,8 +307,8 @@ export default {
     deg(i) {
       return -40 + 2.4 * i
     },
-    top(i) {
-      return Math.pow(this.deg(i) * 0.1, 2)
+    top(i, handNum) {
+      return 0.13 * Math.pow(i - handNum / 2, 2)
     },
     burdenBottom(i) {
       return i * 6
@@ -338,6 +352,8 @@ export default {
 
     // 自分のisReadyフラグをinvert -> functioins発火
     async ready() {
+      this.$nuxt.$loading.start()
+
       const gameStart = this.$fireFunc.httpsCallable('gameStart')
       const playerRef = this.$firestore.doc(`/rooms/${this.roomId}/players/${this.uid}`)
       // isReadyをinvertしてからgameStart関数を呼ぶ
@@ -345,39 +361,51 @@ export default {
         const playerSnap = await playerRef.get()
         await playerRef.update({ isReady: !playerSnap.data().isReady })
         await gameStart(this.roomId)
+
+        this.$nuxt.$loading.finish()
       } catch (e) {
         alert(e.message)
+        this.$nuxt.$loading.finish()
       }
     },
     async surrender() {
+      this.$nuxt.$loading.start()
       const surrender = this.$fireFunc.httpsCallable('surrender')
       try {
         await surrender(this.roomId)
       } catch (e) {
         alert(e.message)
       }
+      this.$nuxt.$loading.finish()
     },
 
     // 宣言し、カードを渡す
-    give() {
+    async give() {
+      this.$nuxt.$loading.start()
+
       // 【バリデーション】細かいのはFunctionsでするため、事物/宣言/相手プレイヤーの選択を確認
       const acceptor = this.players.find(player => player.id === this.acceptorId)
       const isContinuable = this.real && this.declare && this.acceptorId && acceptor.canbeNominated
       if (!isContinuable) {
         alert('提出カード・宣言・受け手プレイヤーを確認してください')
+        this.$nuxt.$loading.finish()
         return
       }
       const give = this.$fireFunc.httpsCallable('give')
-      give(this.submission)
+      await give(this.submission)
+
+      this.$nuxt.$loading.finish()
     },
 
     //pass後のgive
     async giveOfPass() {
+      this.$nuxt.$loading.start()
       // 【バリデーション】細かいのはFunctionsでするため、事物/宣言/相手プレイヤーの選択を確認
       const acceptor = this.players.find(player => player.id === this.acceptorId)
       const isContinuable = this.declare && this.acceptorId && acceptor.canbeNominated
       if (!isContinuable) {
         alert('宣言、受け手を選択してください')
+        this.$nuxt.$loading.finish()
         return
       }
       const giveOfPass = this.$fireFunc.httpsCallable('giveOfPass')
@@ -386,10 +414,13 @@ export default {
       } catch (e) {
         alert(e.message)
       }
+      this.$nuxt.$loading.finish()
     },
 
     //回答
     async answer(ans) {
+      this.$nuxt.$loading.start()
+
       const answer = this.$fireFunc.httpsCallable('answer')
       const dataSet = {
         roomId: this.roomId,
@@ -400,12 +431,17 @@ export default {
       } catch (e) {
         alert(e.message)
       }
+
+      this.$nuxt.$loading.finish()
     },
 
     //パス
     async pass() {
+      this.$nuxt.$loading.start()
       if (this.phase !== 'accept' || !this.me.isAcceptor) {
-        alert('acceptフェーズではない、又はあなたはacceptorではありません')
+        alert('acceptフェーズでない、又はあなたはacceptorではありません')
+        this.$nuxt.$loading.finish()
+        return
       }
       const pass = this.$fireFunc.httpsCallable('pass')
       try {
@@ -413,10 +449,13 @@ export default {
       } catch (e) {
         alert(e.message)
       }
+      this.$nuxt.$loading.finish()
     },
 
     // yesnoフェーズで溜める処理
     async accumulate() {
+      this.$nuxt.$loading.start()
+
       const accumulate = this.$fireFunc.httpsCallable('accumulate')
       const declare = this.progress.declare
 
@@ -439,6 +478,7 @@ export default {
 
       if (!accumulations.length) {
         alert('溜めるカードを選択してください')
+        this.$nuxt.$loading.finish()
         return
       }
 
@@ -447,9 +487,9 @@ export default {
       accumulations.forEach(accumulation => {
         includeYesNo = includeYesNo || accumulation.type === 'yes' || accumulation.type === 'no'
       })
-
       if (includeYesNo) {
         alert('yes/noは選択できません')
+        this.$nuxt.$loading.finish()
         return
       }
 
@@ -462,10 +502,8 @@ export default {
             } catch (e) {
               alert(e.message)
             }
-            return
           } else {
             alert('1枚のキングを溜めるか、キング以外で2枚溜めてください')
-            return
           }
         } else {
           if (accumulations[0].species === declare) {
@@ -475,10 +513,8 @@ export default {
             } catch (e) {
               alert(e.message)
             }
-            return
           } else {
-            alert('宣言された物と同じ厄介者を溜めてください')
-            return
+            alert('1枚溜める場合は、宣言されたカードを溜めてください')
           }
         }
       } else {
@@ -490,9 +526,8 @@ export default {
             } catch (e) {
               alert(e.message)
             }
-            return
           } else {
-            alert('2枚溜める場合は、宣言と違う厄介者を溜めてください')
+            alert('2枚溜める場合は、宣言と違うカードを溜めてください')
           }
         } else {
           if (accumulations[0].species !== declare && accumulations[1].species !== declare) {
@@ -501,12 +536,12 @@ export default {
             } catch (e) {
               alert(e.message)
             }
-            return
           } else {
-            alert('2枚溜める場合は、宣言と違う厄介者を溜めてください')
+            alert('2枚溜める場合は、宣言と違うカードを溜めてください')
           }
         }
       }
+      this.$nuxt.$loading.finish()
     },
   },
 }
@@ -514,60 +549,39 @@ export default {
 
 <style lang="scss" scoped>
 $basic: #0f0e17;
+$backOfCard: hsl(220, 40%, 17%);
+//=============================== card =================================
 @mixin card {
+  // バックグラウンドは.common, .king, .yesnoで設定
   height: 70px;
   width: 40px;
   border-radius: 3px;
-  border: 1px solid lighten($basic, 75%);
+  border: 1px solid hsl(40, 20%, 48%);
   font-size: 15px;
   display: grid;
   place-items: center;
   padding: 0;
   margin: 0 5px 0 0;
 }
-.body {
-  background-image: url('https://firebasestorage.googleapis.com/v0/b/gokipo-d9c62.appspot.com/o/room-background%2F074DFCE1-710B-4C74-8277-8F39B79A3C20-451-000000166E74D10B.JPG?alt=media&token=218772db-4a28-40cb-b052-d0d564fa1d35');
-  background-size: cover;
-  background-attachment: fixed;
-  min-height: 100vh;
-  padding-top: 90px;
+//card colors of front
+.king {
+  background: hsl(60, 90%, 28%) !important;
 }
-.player {
-  width: 330px;
-  margin: 20px;
+.yesno {
+  background: hsl(200, 90%, 24%) !important;
 }
-
-.buttons {
-  margin: 0 auto;
-  width: 500px;
-  display: flex;
+.common {
+  background: hsl(40, 10%, 15%) !important;
 }
-
-.me {
-  background: #333;
-}
-.isActive {
-  color: red;
-}
-select {
-  margin: auto;
-  display: block;
-  background: $basic;
-  color: white;
-  border: 1px solid white;
-  padding: 10px 10px;
-  border-radius: 3px;
-}
-.table-container {
-  width: 800px;
-  margin: 0 auto;
-}
-.name-zone {
-  display: flex;
-  margin-bottom: 30px;
-  p:nth-child(n + 2) {
-    padding-left: 10px;
-    color: red;
+//card color of back
+.others-card-zone-hand {
+  position: relative;
+  height: 100px;
+  .others-hand {
+    background: $backOfCard;
+  }
+  div {
+    @include card;
   }
 }
 .my-card-zone-hand {
@@ -588,18 +602,7 @@ select {
     border: none; //ここは各種speciesのゾーン確保箇所なのでnone
     div {
       @include card;
-      border: 1px solid white;
     }
-  }
-}
-.others-card-zone-hand {
-  position: relative;
-  height: 100px;
-  .others-hand {
-    background: black;
-  }
-  div {
-    @include card;
   }
 }
 .others-card-zone-burden {
@@ -621,21 +624,61 @@ select {
   margin: 0 auto;
   div {
     @include card;
-    background: black;
+    background: $backOfCard;
   }
 }
 .selectedInHand {
   border: 2px solid hsl(90, 100%, 60%) !important;
 }
-.king {
-  background: hsl(60, 90%, 28%) !important;
+
+//=============================== カード以外 =================================
+.body {
+  background-image: url('https://firebasestorage.googleapis.com/v0/b/gokipo-d9c62.appspot.com/o/room-background%2F074DFCE1-710B-4C74-8277-8F39B79A3C20-451-000000166E74D10B.JPG?alt=media&token=218772db-4a28-40cb-b052-d0d564fa1d35');
+  background-size: cover;
+  background-attachment: fixed;
+  min-height: 100vh;
+  padding-top: 90px;
 }
-.yesno {
-  background: hsl(200, 90%, 24%) !important;
+.player {
+  width: 330px;
+  margin: 20px;
 }
-.common {
-  background: lighten($basic, 28%) !important;
+.buttons {
+  margin: 0 auto;
+  width: 500px;
+  display: flex;
 }
+.me {
+  background: #333;
+}
+
+select {
+  margin: auto;
+  display: block;
+  background: $basic;
+  color: white;
+  border: 1px solid white;
+  padding: 10px 10px;
+  border-radius: 3px;
+}
+.table-container {
+  width: 800px;
+  margin: 0 auto;
+}
+.name-zone {
+  display: flex;
+  padding-bottom: 24px;
+  p {
+    height: 1em;
+    margin: 0;
+  }
+  //セリフ
+  p:nth-child(n + 2) {
+    padding-left: 10px;
+    color: red;
+  }
+}
+
 .progress {
   width: 600px;
   height: 30px;
@@ -650,19 +693,16 @@ select {
   }
 }
 .acceptor {
-  background: lighten($basic, 30%);
+  color: hsl(90, 100%, 60%);
 }
 .canbeNominated {
   text-decoration: line-through;
 }
-.loser {
-  background: red;
-}
-.active {
-  background: lighten($basic, 20%);
+.isActive {
+  color: red;
 }
 .ready {
-  background: lightcoral;
+  color: lightcoral;
 }
 .dashed {
   border: 1px dashed white !important;
@@ -671,6 +711,9 @@ select {
 ::v-deep img {
   height: 80%;
   width: 90%;
+}
+.offline {
+  color: hsl(0, 20%, 30%);
 }
 
 //デバッグ用

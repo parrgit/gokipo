@@ -290,81 +290,153 @@ exports.answer = functions.region('asia-northeast1').https.onCall(async (dataSet
 })
 
 //yes/noを押し付けられた際に、宣言と同じもの1枚を溜めるか、宣言と違うもの2枚をためる
-exports.accumulate = functions.region('asia-northeast1').https.onCall((submission, context) => {
-  //------------------------- 準備↓ ----------------------------//
-  console.log('============================ACCUMULATE!================================')
-  const roomId = submission.roomId //ルームid
-  const accum = submission.accumulations //提出カード(1or2枚)
-  const declare = submission.declare //宣言
-  const phase = submission.phase //フェーズ
-  const uid = context.auth.uid //溜め手のid
-  let includeYesNo = false //提出カードにyes/noが含まれていないか
-  //------------------------- 準備↑ ----------------------------//
+exports.accumulate = functions
+  .region('asia-northeast1')
+  .https.onCall(async (submission, context) => {
+    //------------------------- 準備↓ ----------------------------//
+    console.log('============================ACCUMULATE!================================')
+    const roomId = submission.roomId //ルームid
+    const accum = submission.accumulations //提出カード(1or2枚)
+    const declare = submission.declare //宣言
+    const phase = submission.phase //フェーズ
+    const uid = context.auth.uid //溜め手のid
+    let includeYesNo = false //提出カードにyes/noが含まれていないか
+    //------------------------- 準備↑ ----------------------------//
 
-  //------------------------- バリデーション↓ ----------------------------//
-  //フェーズチェック
-  if (phase !== 'yesno') {
-    console.log('yesnoフェーズではありません')
-    return
-  }
-  //枚数チェック
-  if (accum.length < 1 || accum.length > 2) {
-    console.log('1,2枚でないと溜められません')
-    return //0枚、3枚以上の場合return
-  }
-  //yes,noが提出されている場合はじく
-  accum.forEach(burden => {
-    const flag = burden.type === 'yes' || burden.type === 'no'
-    includeYesNo = includeYesNo || flag
+    //------------------------- バリデーション↓ ----------------------------//
+    //フェーズチェック
+    if (phase !== 'yesno') {
+      console.log('yesnoフェーズではありません')
+      return
+    }
+    //枚数チェック
+    if (accum.length < 1 || accum.length > 2) {
+      console.log('1,2枚でないと溜められません')
+      return //0枚、3枚以上の場合return
+    }
+    //yes,noが提出されている場合はじく
+    accum.forEach(burden => {
+      const flag = burden.type === 'yes' || burden.type === 'no'
+      includeYesNo = includeYesNo || flag
+    })
+    if (includeYesNo) {
+      console.log('yes/noは選択できません')
+      return
+    }
+    //------------------------- バリデーション↑ ----------------------------//
+
+    //以下、「1枚提出」「2枚提出」でもバリデーションあり
+
+    //1枚提出
+    if (accum.length < 2) {
+      if (declare === 'king') {
+        if (accum[0].type === 'king') {
+          await accumulateSub(roomId, accum, declare, uid, fireStore, admin)
+          return
+        } else {
+          console.log('1枚のキングを溜めるか、キング以外で2枚溜めてください')
+          return
+        }
+      } else {
+        if (accum[0].species === declare) {
+          await accumulateSub(roomId, accum, declare, uid, fireStore, admin)
+          return
+        } else {
+          console.log('宣言された物と同じ厄介者を溜めてください')
+          return
+        }
+      }
+    } else {
+      //2枚提出
+      if (declare === 'king') {
+        if (accum[0].type !== declare && accum[1].type !== declare) {
+          await accumulateSub(roomId, accum, declare, uid, fireStore, admin)
+          return
+        } else {
+          console.log('2枚溜める場合は、宣言と違う厄介者を溜めてください')
+          return
+        }
+      } else {
+        if (accum[0].species !== declare && accum[1].species !== declare) {
+          await accumulateSub(roomId, accum, declare, uid, fireStore, admin)
+          return
+        } else {
+          console.log('2枚溜める場合は、宣言と違う厄介者を溜めてください')
+          return
+        }
+      }
+    }
   })
-  if (includeYesNo) {
-    console.log('yes/noは選択できません')
-    return
-  }
-  //------------------------- バリデーション↑ ----------------------------//
 
-  //以下、「1枚提出」「2枚提出」でもバリデーションあり
+// Create a new function which is triggered on changes to /status/{uid}
+// Note: This is a Realtime Database trigger, *not* Firestore.
+exports.onUserStatusChanged = functions.database
+  .ref('/status/{uid}')
+  .onUpdate(async (change, context) => {
+    // Get the data written to Realtime Database
+    const eventStatus = change.after.val()
 
-  //1枚提出
-  if (accum.length < 2) {
-    if (declare === 'king') {
-      if (accum[0].type === 'king') {
-        accumulateSub(roomId, accum, declare, uid, fireStore, admin)
-        return
-      } else {
-        console.log('1枚のキングを溜めるか、キング以外で2枚溜めてください')
-        return
-      }
-    } else {
-      if (accum[0].species === declare) {
-        accumulateSub(roomId, accum, declare, uid, fireStore, admin)
-        return
-      } else {
-        console.log('宣言された物と同じ厄介者を溜めてください')
-        return
-      }
+    // Then use other event data to create a reference to the
+    // corresponding Firestore document.
+    const userStatusFirestoreRef = fireStore.doc(`status/${context.params.uid}`)
+
+    // It is likely that the Realtime Database change that triggered
+    // this event has already been overwritten by a fast change in
+    // online / offline status, so we'll re-read the current data
+    // and compare the timestamps.
+    const statusSnapshot = await change.after.ref.once('value')
+    const status = statusSnapshot.val()
+    console.log(status, eventStatus)
+    // If the current timestamp for this data is newer than
+    // the data that triggered this event, we exit this function.
+    if (status.last_changed > eventStatus.last_changed) {
+      return null
     }
-  } else {
-    //2枚提出
-    if (declare === 'king') {
-      if (accum[0].type !== declare && accum[1].type !== declare) {
-        accumulateSub(roomId, accum, declare, uid, fireStore, admin)
-        return
-      } else {
-        console.log('2枚溜める場合は、宣言と違う厄介者を溜めてください')
-        return
-      }
-    } else {
-      if (accum[0].species !== declare && accum[1].species !== declare) {
-        accumulateSub(roomId, accum, declare, uid, fireStore, admin)
-        return
-      } else {
-        console.log('2枚溜める場合は、宣言と違う厄介者を溜めてください')
-        return
-      }
+
+    // Otherwise, we convert the last_changed field to a Date
+    eventStatus.last_changed = new Date(eventStatus.last_changed)
+
+    // ... and write it to Firestore.
+    return userStatusFirestoreRef.set(eventStatus)
+  })
+
+//定期実行関数
+exports.scheduledFunction = functions.pubsub.schedule('every 30 minutes').onRun(async () => {
+  //firestore
+  const [roomsSnap, statusSnap] = await Promise.all([
+    fireStore.collection(`/rooms`).get(),
+    fireStore.collection(`/status`).get(),
+  ])
+
+  roomsSnap.docs.forEach(async room => {
+    let players
+    let isDestroyable = true
+
+    const roomRef = fireStore.doc(`/rooms/${room.id}`)
+    const playersRef = fireStore.collection(`/rooms/${room.id}/players`)
+
+    players = await playersRef.get()
+
+    if (players.docs.length) {
+      players.docs.forEach(player => {
+        const statusDoc = statusSnap.docs.filter(doc => doc.id === player.id)
+        if (statusDoc[0]) {
+          if (statusDoc[0].data().internet === 'online') isDestroyable = false
+        }
+      })
     }
-  }
+
+    // console.log(room.id, isDestroyable)
+    if (isDestroyable) {
+      await roomRef.delete()
+    }
+  })
+
+  return null
 })
+
+// debug用、デバッグ用
+// exports.test = functions.region('asia-northeast1').https.onCall(async () => {})
 
 // サーバー側でリッスンの例【現時点では使わない】
 // functionsの仕組みによりフィールドの検知はできず、ドキュメントの検知となる

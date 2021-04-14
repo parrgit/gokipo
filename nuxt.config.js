@@ -9,7 +9,7 @@ export default {
 
   // Global page headers (https://go.nuxtjs.dev/config-head)
   head: {
-    title: 'gokipo',
+    title: 'Purine',
     meta: [
       { charset: 'utf-8' },
       { name: 'viewport', content: 'width=device-width, initial-scale=1' },
@@ -69,5 +69,16 @@ export default {
         $: 'jquery',
       }),
     ],
+  },
+
+  loading: {
+    color: 'red',
+    height: '5px',
+  },
+
+  loadingIndicator: {
+    name: 'cube-grid',
+    color: 'red',
+    background: 'black',
   },
 }
