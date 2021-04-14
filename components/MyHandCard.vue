@@ -58,8 +58,6 @@
       <span v-show="card.species === 'nbs'">nbs</span>
       <span v-show="card.species === 'sal'">sal</span>
       <span v-show="card.species === 'srp'">srp</span>
-      <span v-show="card.type === 'yes'">yes</span>
-      <span v-show="card.type === 'no'">no</span>
     </p>
   </button>
 </template>

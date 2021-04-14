@@ -290,81 +290,83 @@ exports.answer = functions.region('asia-northeast1').https.onCall(async (dataSet
 })
 
 //yes/noを押し付けられた際に、宣言と同じもの1枚を溜めるか、宣言と違うもの2枚をためる
-exports.accumulate = functions.region('asia-northeast1').https.onCall((submission, context) => {
-  //------------------------- 準備↓ ----------------------------//
-  console.log('============================ACCUMULATE!================================')
-  const roomId = submission.roomId //ルームid
-  const accum = submission.accumulations //提出カード(1or2枚)
-  const declare = submission.declare //宣言
-  const phase = submission.phase //フェーズ
-  const uid = context.auth.uid //溜め手のid
-  let includeYesNo = false //提出カードにyes/noが含まれていないか
-  //------------------------- 準備↑ ----------------------------//
+exports.accumulate = functions
+  .region('asia-northeast1')
+  .https.onCall(async (submission, context) => {
+    //------------------------- 準備↓ ----------------------------//
+    console.log('============================ACCUMULATE!================================')
+    const roomId = submission.roomId //ルームid
+    const accum = submission.accumulations //提出カード(1or2枚)
+    const declare = submission.declare //宣言
+    const phase = submission.phase //フェーズ
+    const uid = context.auth.uid //溜め手のid
+    let includeYesNo = false //提出カードにyes/noが含まれていないか
+    //------------------------- 準備↑ ----------------------------//
 
-  //------------------------- バリデーション↓ ----------------------------//
-  //フェーズチェック
-  if (phase !== 'yesno') {
-    console.log('yesnoフェーズではありません')
-    return
-  }
-  //枚数チェック
-  if (accum.length < 1 || accum.length > 2) {
-    console.log('1,2枚でないと溜められません')
-    return //0枚、3枚以上の場合return
-  }
-  //yes,noが提出されている場合はじく
-  accum.forEach(burden => {
-    const flag = burden.type === 'yes' || burden.type === 'no'
-    includeYesNo = includeYesNo || flag
+    //------------------------- バリデーション↓ ----------------------------//
+    //フェーズチェック
+    if (phase !== 'yesno') {
+      console.log('yesnoフェーズではありません')
+      return
+    }
+    //枚数チェック
+    if (accum.length < 1 || accum.length > 2) {
+      console.log('1,2枚でないと溜められません')
+      return //0枚、3枚以上の場合return
+    }
+    //yes,noが提出されている場合はじく
+    accum.forEach(burden => {
+      const flag = burden.type === 'yes' || burden.type === 'no'
+      includeYesNo = includeYesNo || flag
+    })
+    if (includeYesNo) {
+      console.log('yes/noは選択できません')
+      return
+    }
+    //------------------------- バリデーション↑ ----------------------------//
+
+    //以下、「1枚提出」「2枚提出」でもバリデーションあり
+
+    //1枚提出
+    if (accum.length < 2) {
+      if (declare === 'king') {
+        if (accum[0].type === 'king') {
+          await accumulateSub(roomId, accum, declare, uid, fireStore, admin)
+          return
+        } else {
+          console.log('1枚のキングを溜めるか、キング以外で2枚溜めてください')
+          return
+        }
+      } else {
+        if (accum[0].species === declare) {
+          await accumulateSub(roomId, accum, declare, uid, fireStore, admin)
+          return
+        } else {
+          console.log('宣言された物と同じ厄介者を溜めてください')
+          return
+        }
+      }
+    } else {
+      //2枚提出
+      if (declare === 'king') {
+        if (accum[0].type !== declare && accum[1].type !== declare) {
+          await accumulateSub(roomId, accum, declare, uid, fireStore, admin)
+          return
+        } else {
+          console.log('2枚溜める場合は、宣言と違う厄介者を溜めてください')
+          return
+        }
+      } else {
+        if (accum[0].species !== declare && accum[1].species !== declare) {
+          await accumulateSub(roomId, accum, declare, uid, fireStore, admin)
+          return
+        } else {
+          console.log('2枚溜める場合は、宣言と違う厄介者を溜めてください')
+          return
+        }
+      }
+    }
   })
-  if (includeYesNo) {
-    console.log('yes/noは選択できません')
-    return
-  }
-  //------------------------- バリデーション↑ ----------------------------//
-
-  //以下、「1枚提出」「2枚提出」でもバリデーションあり
-
-  //1枚提出
-  if (accum.length < 2) {
-    if (declare === 'king') {
-      if (accum[0].type === 'king') {
-        accumulateSub(roomId, accum, declare, uid, fireStore, admin)
-        return
-      } else {
-        console.log('1枚のキングを溜めるか、キング以外で2枚溜めてください')
-        return
-      }
-    } else {
-      if (accum[0].species === declare) {
-        accumulateSub(roomId, accum, declare, uid, fireStore, admin)
-        return
-      } else {
-        console.log('宣言された物と同じ厄介者を溜めてください')
-        return
-      }
-    }
-  } else {
-    //2枚提出
-    if (declare === 'king') {
-      if (accum[0].type !== declare && accum[1].type !== declare) {
-        accumulateSub(roomId, accum, declare, uid, fireStore, admin)
-        return
-      } else {
-        console.log('2枚溜める場合は、宣言と違う厄介者を溜めてください')
-        return
-      }
-    } else {
-      if (accum[0].species !== declare && accum[1].species !== declare) {
-        accumulateSub(roomId, accum, declare, uid, fireStore, admin)
-        return
-      } else {
-        console.log('2枚溜める場合は、宣言と違う厄介者を溜めてください')
-        return
-      }
-    }
-  }
-})
 
 // Create a new function which is triggered on changes to /status/{uid}
 // Note: This is a Realtime Database trigger, *not* Firestore.

@@ -722,19 +722,19 @@ select {
   }
 }
 .acceptor {
-  background: lighten($basic, 30%);
+  color: hsl(90, 100%, 60%);
 }
 .canbeNominated {
   text-decoration: line-through;
 }
 .loser {
-  background: red;
+  color: red;
 }
 .isActive {
   color: red;
 }
 .ready {
-  background: lightcoral;
+  color: lightcoral;
 }
 .dashed {
   border: 1px dashed white !important;

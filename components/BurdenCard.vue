@@ -50,6 +50,15 @@
       v-show="card.type === 'no'"
       src="https://firebasestorage.googleapis.com/v0/b/gokipo-d9c62.appspot.com/o/no.png?alt=media&token=35fbd5b3-0bf5-44a5-a664-7af170c1380a"
     />
+    <p style="position:absolute; bottom:-15px;">
+      <span v-show="card.species === 'ber'">ber</span>
+      <span v-show="card.species === 'gzd'">gzd</span>
+      <span v-show="card.species === 'lvr'">lvr</span>
+      <span v-show="card.species === 'mon'">mon</span>
+      <span v-show="card.species === 'nbs'">nbs</span>
+      <span v-show="card.species === 'sal'">sal</span>
+      <span v-show="card.species === 'srp'">srp</span>
+    </p>
   </div>
 </template>
 
