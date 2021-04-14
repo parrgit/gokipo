@@ -10,6 +10,7 @@
         yesno: card.type === 'yes' || card.type === 'no',
       },
     ]"
+    style="position:relative"
   >
     <!-- :srcでソースを切り替えるのもあり、mixin? 、オブジェクトで回す?-->
     <!-- 画像は直で入れ込むのでもおｋ assets→最適化あり -->
@@ -49,6 +50,17 @@
       v-show="card.type === 'no'"
       src="https://firebasestorage.googleapis.com/v0/b/gokipo-d9c62.appspot.com/o/no.png?alt=media&token=35fbd5b3-0bf5-44a5-a664-7af170c1380a"
     />
+    <p style="position:absolute; bottom:-15px;">
+      <span v-show="card.species === 'ber'">ber</span>
+      <span v-show="card.species === 'gzd'">gzd</span>
+      <span v-show="card.species === 'lvr'">lvr</span>
+      <span v-show="card.species === 'mon'">mon</span>
+      <span v-show="card.species === 'nbs'">nbs</span>
+      <span v-show="card.species === 'sal'">sal</span>
+      <span v-show="card.species === 'srp'">srp</span>
+      <span v-show="card.type === 'yes'">yes</span>
+      <span v-show="card.type === 'no'">no</span>
+    </p>
   </button>
 </template>
 
@@ -57,3 +69,9 @@ export default {
   props: ['card', 'realId'],
 }
 </script>
+
+<style lang="scss" scoped>
+p {
+  text-shadow: 1px 0 0 black, 0 1px 0 black, -1px 0 0 black, 0 -1px 0 black;
+}
+</style>

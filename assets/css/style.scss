@@ -1,10 +1,12 @@
+@import url('https://fonts.googleapis.com/css2?family=New+Tegomin&display=swap');
+
 $basic: #0f0e17;
 $light: #fffffe;
 $orange: hsl(20, 70%, 60%);
 
 * {
   box-sizing: border-box;
-  font-family: 'Courier New', serif, 'ヒラギノ明朝', Courier, monospace;
+  font-family: 'New Tegomin','Courier New', serif, 'Hiragino Mincho ProN', Courier, monospace;
   user-select: none;
 }
 
@@ -19,6 +21,7 @@ body {
   padding: 0;
   min-height: 64vh;
 }
+
 
 h2,
 h3 {

@@ -696,7 +696,7 @@ select {
 }
 .name-zone {
   display: flex;
-  margin-bottom: 10px;
+  padding-bottom: 24px;
   p {
     height: 1em;
     margin: 0;
