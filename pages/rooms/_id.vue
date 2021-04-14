@@ -727,9 +727,6 @@ select {
 .canbeNominated {
   text-decoration: line-through;
 }
-.loser {
-  color: red;
-}
 .isActive {
   color: red;
 }
