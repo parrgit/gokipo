@@ -6,6 +6,7 @@
     :class="[
       'dashed animate__animated animate__fadeIn animate__repeat-2',
       {
+        common: secretReal.type === 'common',
         king: secretReal.type === 'king',
         yesno: secretReal.type === 'yes' || secretReal.type === 'no',
       },
@@ -47,6 +48,15 @@
       v-show="secretReal.type === 'no'"
       src="https://firebasestorage.googleapis.com/v0/b/gokipo-d9c62.appspot.com/o/no.png?alt=media&token=35fbd5b3-0bf5-44a5-a664-7af170c1380a"
     />
+    <p style="position:absolute; bottom:-15px;">
+      <span v-show="secretReal.species === 'ber'">ber</span>
+      <span v-show="secretReal.species === 'gzd'">gzd</span>
+      <span v-show="secretReal.species === 'lvr'">lvr</span>
+      <span v-show="secretReal.species === 'mon'">mon</span>
+      <span v-show="secretReal.species === 'nbs'">nbs</span>
+      <span v-show="secretReal.species === 'sal'">sal</span>
+      <span v-show="secretReal.species === 'srp'">srp</span>
+    </p>
   </div>
 </template>
 

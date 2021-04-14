@@ -1,13 +1,18 @@
 export default async ({ app }) => {
   // Fetch the current user's ID from Firebase Authentication.
-  let uid
-  app.$fireAuth.onAuthStateChanged(function(user) {
-    if (user) {
-      uid = user.uid
-    } else {
-      return
-    }
-  })
+
+  function auth() {
+    return new Promise(resolve => {
+      app.$fireAuth.onAuthStateChanged(auth => {
+        resolve(auth || null)
+      })
+    })
+  }
+
+  const user = await auth()
+  if (!user) return
+  const uid = user.uid || null
+  if (!uid) return
 
   // Create a reference to this user's specific status node.
   // This is where we will store data about being online/offline.
@@ -17,12 +22,12 @@ export default async ({ app }) => {
   // the Realtime database when this device is offline
   // or online.
   var isOfflineForDatabase = {
-    state: 'offline',
+    internet: 'offline',
     last_changed: app.$firebase.database.ServerValue.TIMESTAMP,
   }
 
   var isOnlineForDatabase = {
-    state: 'online',
+    internet: 'online',
     last_changed: app.$firebase.database.ServerValue.TIMESTAMP,
   }
 
@@ -51,6 +56,42 @@ export default async ({ app }) => {
         // We can now safely set ourselves as 'online' knowing that the
         // server will mark us as offline once we lose connection.
         userStatusDatabaseRef.set(isOnlineForDatabase)
+      })
+  })
+
+  // =================================== ローカルに同期 ===================================
+  //オフライン デバイスの Cloud Firestore キャッシュに同期して、それがオフラインであることをアプリが認識できるようにします。
+  var userStatusFirestoreRef = app.$firestore.doc('/status/' + uid)
+
+  // Firestore uses a different server timestamp value, so we'll
+  // create two more constants for Firestore internet.
+  var isOfflineForFirestore = {
+    internet: 'offline',
+    last_changed: app.$firebase.firestore.FieldValue.serverTimestamp(),
+  }
+
+  var isOnlineForFirestore = {
+    internet: 'online',
+    last_changed: app.$firebase.firestore.FieldValue.serverTimestamp(),
+  }
+
+  app.$fireReal.ref('.info/connected').on('value', function(snapshot) {
+    if (snapshot.val() == false) {
+      // Instead of simply returning, we'll also set Firestore's internet
+      // to 'offline'. This ensures that our Firestore cache is aware
+      // of the switch to 'offline.'
+      userStatusFirestoreRef.set(isOfflineForFirestore)
+      return
+    }
+
+    userStatusDatabaseRef
+      .onDisconnect()
+      .set(isOfflineForDatabase)
+      .then(function() {
+        userStatusDatabaseRef.set(isOnlineForDatabase)
+
+        // We'll also add Firestore set here for when we come online.
+        userStatusFirestoreRef.set(isOnlineForFirestore)
       })
   })
 }
