@@ -398,6 +398,44 @@ exports.onUserStatusChanged = functions.database
     return userStatusFirestoreRef.set(eventStatus)
   })
 
+//定期実行関数
+exports.scheduledFunction = functions.pubsub.schedule('every 30 minutes').onRun(async () => {
+  //firestore
+  const [roomsSnap, statusSnap] = await Promise.all([
+    fireStore.collection(`/rooms`).get(),
+    fireStore.collection(`/status`).get(),
+  ])
+
+  roomsSnap.docs.forEach(async room => {
+    let players
+    let isDestroyable = true
+
+    const roomRef = fireStore.doc(`/rooms/${room.id}`)
+    const playersRef = fireStore.collection(`/rooms/${room.id}/players`)
+
+    players = await playersRef.get()
+
+    if (players.docs.length) {
+      players.docs.forEach(player => {
+        const statusDoc = statusSnap.docs.filter(doc => doc.id === player.id)
+        if (statusDoc[0]) {
+          if (statusDoc[0].data().internet === 'online') isDestroyable = false
+        }
+      })
+    }
+
+    // console.log(room.id, isDestroyable)
+    if (isDestroyable) {
+      await roomRef.delete()
+    }
+  })
+
+  return null
+})
+
+// debug用、デバッグ用
+// exports.test = functions.region('asia-northeast1').https.onCall(async () => {})
+
 // サーバー側でリッスンの例【現時点では使わない】
 // functionsの仕組みによりフィールドの検知はできず、ドキュメントの検知となる
 // おそらくPCでのemulate（serve）では動かせない

@@ -302,7 +302,10 @@ export default {
     ...mapActions('basics', ['fetchBasics']),
 
     //デバッグ用
-    async test() {},
+    async test() {
+      const test = this.$fireFunc.httpsCallable('test')
+      await test()
+    },
     initializeRoom() {
       const roomData = {
         minNumber: 2,
