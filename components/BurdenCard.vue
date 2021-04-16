@@ -72,3 +72,9 @@ export default {
   },
 }
 </script>
+
+<style lang="scss" scoped>
+p {
+  text-shadow: 1px 0 0 black, 0 1px 0 black, -1px 0 0 black, 0 -1px 0 black;
+}
+</style>
