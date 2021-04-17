@@ -1,7 +1,7 @@
 # install dependencies
 $ npm install @root&functions
 
-# set firebaseConfig.json(apiKey..)
+# set firebaseConfig.json(apiKey,etc..)
 
 # serve with hot reload at localhost:3000
 $ npm run dev
